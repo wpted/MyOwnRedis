@@ -10,7 +10,7 @@ text, serialized objects, counter values and binary arrays.
 
 ### RESP
 
-To communicate with the Redis server, Redis client use a protocol called **REdis Serialization Protocol**.
+To communicate with the Redis server, Redis client uses a protocol called **REdis Serialization Protocol**.
 In RESP, the first byte of the data determines its type. 
 <br><br>
 New RESP connections should begin the session by calling the HELLO command.
@@ -22,12 +22,26 @@ The information in the reply is partly server-dependent, but certain fields are 
 - version: the server's version.
 - proto: the highest supported version of the RESP protocol.
 
+For example, if we were to send `PING` to the server from the client side, `PING` has to be encoded into
+
+> `*1\r\n\$4\r\nPING\r\n`
+> - 
+> - '*' Means that we received an array.
+> - 1 stands for the size of the array.
+> - \r\n (CRLF) is the terminator of each part in RESP.
+> - The backslash before $4 is the escape character for the $ sign. 
+> - $4 tells you that the following is a bulk string type of four characters long.
+> - PING is the string itself.
+    
+> - `+PONG` should be the string the PING command returned. The plus sign tells you that it's a simple string type.
+
 
 ## Idea
-1. Initiate a tcp server that receives data frames from any client.
-2. Decode the client payload using RESP, return error message if payload is not a valid RESP.
-3. Depending on the command, check which corresponding action to perform.
-4. Send data back to the client.
+1. Be a copy cat. Translate the first version of Redis ( written in TCL ) to Go. Understand how redis is designed.
+2. Initiate a tcp server that receives data frames from any client.
+3. Decode the client payload using RESP, return error message if payload is not a valid RESP.
+4. Depending on the command, check which corresponding action to perform.
+5. Send data back to the client.
 
 ## Steps
 
@@ -83,3 +97,7 @@ The information in the reply is partly server-dependent, but certain fields are 
 - [RESP protocol spec](https://redis.io/docs/reference/protocol-spec/)
 - [理解 Redis 的 RESP 協議](https://moelove.info/2017/03/05/理解-Redis-的-RESP-协议/)
 - [How to implement instant messaging with WebSockets in Go](https://yalantis.com/blog/how-to-build-websockets-in-go/)
+- [Redis file persistence](https://redis.io/docs/management/persistence/)
+- [How to test TCP/UDP connection in Go](https://dev.to/williamhgough/how-to-test-tcpudp-connections-in-go---part-1-3bga)
+- [Understanding the Redis protocol](https://subscription.packtpub.com/book/data/9781783988167/1/ch01lvl1sec17/understanding-the-redis-protocol)
+- [Introduction to RESP](https://medium.com/@dassomnath/introduction-to-resp-redis-serialization-protocol-f3d0b8bd9cdc)
