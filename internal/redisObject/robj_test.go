@@ -2,12 +2,11 @@ package redisObject
 
 import (
     "errors"
-    "fmt"
     "testing"
 )
 
 func Test_Deserialize(t *testing.T) {
-    t.Run("Test Deserialize - Invalid commands", func(t *testing.T) {
+    t.Run("Test Deserialize Invalid commands", func(t *testing.T) {
         testCases := []struct {
             input []byte
             err   error
@@ -30,7 +29,7 @@ func Test_Deserialize(t *testing.T) {
         }
     })
 
-    t.Run("Test Deserialize - Valid commands", func(t *testing.T) {
+    t.Run("Test Deserialize Valid commands", func(t *testing.T) {
         testCases := []struct {
             input  []byte
             result *RObj
@@ -123,11 +122,13 @@ func Test_parseLength(t *testing.T) {
     }
 
     for _, tc := range testCases {
-        re, theRestOfTheInput := parseLength(tc.input)
+        re, theRestOfTheInput, err := parseLength(tc.input)
+        if err != nil {
+            t.Errorf("Error parsing length: got error %v.\n", err)
+        }
         if re != tc.result {
             t.Errorf("Error parsing length: expected %d, got %d.\n", tc.result, re)
         }
-        fmt.Println(theRestOfTheInput)
         if len(theRestOfTheInput) != len(tc.residualBytes) {
             t.Errorf("Error re-slicing, expected length %d, go %d.\n", len(tc.residualBytes), len(theRestOfTheInput))
         } else {
@@ -153,7 +154,10 @@ func Test_parseMessage(t *testing.T) {
     }
 
     for _, tc := range testCases {
-        msg, theRestOfTheInput := parseMessage(tc.input)
+        msg, theRestOfTheInput, err := parseMessage(tc.input)
+        if err != nil {
+            t.Errorf("Error parsing message: got error %v.\n", err)
+        }
         if msg != tc.result {
             t.Errorf("Error parsing message: expected %s, got %s.\n", tc.result, msg)
         }

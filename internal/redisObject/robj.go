@@ -68,14 +68,17 @@ func Deserialize(req []byte) (*RObj, error) {
 
             switch robj.Type {
             case BulkStrings:
-                msgLength, theRestOfTheInput := parseLength(req)
-                if msgLength == 0 {
-                    return nil, ErrInvalidCommand
+                msgLength, theRestOfTheInput, err := parseLength(req)
+                if err != nil {
+                    return nil, err
                 }
 
                 req = theRestOfTheInput
 
-                msg, theRestOfTheInput := parseMessage(req)
+                msg, theRestOfTheInput, err := parseMessage(req)
+                if err != nil {
+                    return nil, err
+                }
                 req = theRestOfTheInput
 
                 if len(msg) != msgLength {
@@ -84,20 +87,23 @@ func Deserialize(req []byte) (*RObj, error) {
                 content = append(content, msg)
             case Arrays:
                 // 1. How many elements do we have in the array
-                elementNumber, theRestOfTheInput := parseLength(req)
-                if elementNumber == 0 {
-                    return nil, ErrInvalidCommand
+                elementNumber, theRestOfTheInput, err := parseLength(req)
+                if err != nil {
+                    return nil, err
                 }
                 req = theRestOfTheInput
 
-                cmdLength, theRestOfTheInput := parseLength(req)
-                if cmdLength == 0 {
-                    return nil, ErrInvalidCommand
+                cmdLength, theRestOfTheInput, err := parseLength(req)
+                if err != nil {
+                    return nil, err
                 }
 
                 req = theRestOfTheInput
 
-                cmd, theRestOfTheInput := parseMessage(req)
+                cmd, theRestOfTheInput, err := parseMessage(req)
+                if err != nil {
+                    return nil, err
+                }
                 req = theRestOfTheInput
 
                 if len(cmd) != cmdLength {
@@ -114,14 +120,16 @@ func Deserialize(req []byte) (*RObj, error) {
                 }
 
                 for len(req) != 0 {
-                    msgLength, theRestOfTheInput := parseLength(req)
-                    if msgLength == 0 {
-                        return nil, ErrInvalidCommand
+                    msgLength, theRestOfTheInput, err := parseLength(req)
+                    if err != nil {
+                        return nil, err
                     }
                     req = theRestOfTheInput
 
-                    msg, theRestOfTheInput := parseMessage(req)
-
+                    msg, theRestOfTheInput, err := parseMessage(req)
+                    if err != nil {
+                        return nil, err
+                    }
                     req = theRestOfTheInput
 
                     if len(msg) != msgLength {
@@ -133,7 +141,6 @@ func Deserialize(req []byte) (*RObj, error) {
                 if len(content) != cmdTable[robj.Command]-1 {
                     return nil, ErrInvalidCommand
                 }
-
             }
 
             robj.Content = content
@@ -146,7 +153,7 @@ func Deserialize(req []byte) (*RObj, error) {
     return robj, nil
 }
 
-func parseLength(input []byte) (int, []byte) {
+func parseLength(input []byte) (int, []byte, error) {
     length := 0
 
     // Move the pointer to the next character from '$', '*' or ':' to the number part of the input.
@@ -160,14 +167,14 @@ func parseLength(input []byte) (int, []byte) {
 
     // Remove '\r\n'.
     if len(input) < 2 {
-        return 0, []byte{}
+        return 0, []byte{}, ErrInvalidCommand
     } else {
         theRestOfTheInput := input[2:]
-        return length, theRestOfTheInput
+        return length, theRestOfTheInput, nil
     }
 }
 
-func parseMessage(input []byte) (string, []byte) {
+func parseMessage(input []byte) (string, []byte, error) {
     messageByteArr := make([]byte, 0)
     for input[0] != '\r' {
         messageByteArr = append(messageByteArr, input[0])
@@ -176,9 +183,9 @@ func parseMessage(input []byte) (string, []byte) {
 
     // Remove '\r\n'.
     if len(input) < 2 {
-        return "", []byte{}
+        return "", []byte{}, ErrInvalidCommand
     } else {
         theRestOfTheInput := input[2:]
-        return string(messageByteArr), theRestOfTheInput
+        return string(messageByteArr), theRestOfTheInput, nil
     }
 }
