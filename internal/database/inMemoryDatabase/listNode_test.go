@@ -49,7 +49,7 @@ func TestStrNode_LeftPush(t *testing.T) {
         }
 
         if len(gotArr) != len(tc.expectedArr) {
-            t.Errorf("Error linked list length: expected %d, got %d.\n", len(tc.expectedArr), len(gotArr))
+            t.Errorf("Error linked list expectedLength: expected %d, got %d.\n", len(tc.expectedArr), len(gotArr))
         }
 
         for n, ele := range gotArr {
@@ -107,7 +107,7 @@ func TestStrNode_RightPush(t *testing.T) {
         }
 
         if len(gotArr) != len(tc.expectedArr) {
-            t.Errorf("Error linked list length: expected %d, got %d.\n", len(tc.expectedArr), len(gotArr))
+            t.Errorf("Error linked list expectedLength: expected %d, got %d.\n", len(tc.expectedArr), len(gotArr))
         }
 
         for n, ele := range gotArr {
@@ -147,7 +147,7 @@ func TestStrNode_Len(t *testing.T) {
 
     for _, tc := range testCases {
         if tc.node.Len() != tc.length {
-            t.Errorf("Error node length: expected %d, got %d.\n", tc.length, tc.node.Len())
+            t.Errorf("Error node expectedLength: expected %d, got %d.\n", tc.length, tc.node.Len())
         }
     }
 }
