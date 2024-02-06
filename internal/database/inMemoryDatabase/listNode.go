@@ -57,12 +57,11 @@ func (s *StrNode) RightPush(values []string) *StrNode {
         }
         temp.next = tail
         return s
-    } else {
-        return tail
     }
+    return tail
 }
 
-// Len returns the length of a StrNode linked list.
+// Len returns the expectedLength of a StrNode linked list.
 func (s *StrNode) Len() int {
     var count int
 
