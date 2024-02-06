@@ -1,0 +1,1 @@
+Client package is responsible for all connected clients.
