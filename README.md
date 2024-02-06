@@ -73,7 +73,7 @@ For example, if we were to send `PING` to the server from the client side, `PING
     - [ ] Altering and deleting data ( **SET** and **DEL** )
     - [ ] Incrementing and decrementing stored number ( **INCR** amd **DECR** )
     - [ ] Insert all the values and the head ( **LPUSH** ) or tail(**RPUSH**) of a list.
-    - [ ] Check whether a data exist ( **EXISTS** )
+    - [ ] Check whether a data exists ( **EXISTS** )
     - [ ] Set key expiration ( **EXPIRE KEY**, **PX**, **EAXT** and **PXAT**)
     - [ ] Scan **keyspace** to get a list of keys ( **SCAN** )
     - [ ] Check data type and existence ( **TYPE** )
