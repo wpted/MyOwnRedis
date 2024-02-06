@@ -432,9 +432,137 @@ func TestDb_Decrement(t *testing.T) {
 }
 
 func TestDb_LeftPush(t *testing.T) {
+    db := New()
+    t.Run("Test LeftPush: Correct input", func(t *testing.T) {
+        testCases := []struct {
+            key            string
+            list           *StrNode
+            inputValues    []string
+            expectedLength int
+            expectedArr    []string
+        }{
+            {
+                key:            "bar_list",
+                list:           nil,
+                inputValues:    []string{"hello world", "1"},
+                expectedLength: 2,
+                expectedArr:    []string{"1", "hello world"},
+            },
+            {
+                key: "foo_list",
+                list: &StrNode{
+                    value: "1",
+                    next: &StrNode{
+                        value: "2",
+                        next:  nil,
+                    },
+                },
+                expectedLength: 4,
+                inputValues:    []string{"a", "b"},
+                expectedArr:    []string{"b", "a", "1", "2"},
+            },
+        }
 
+        for _, tc := range testCases {
+            if tc.list != nil {
+                // Since we want to test lpush to a key that doesn't exist, we don't create key in the listStorage if tc.list == nil.
+                db.listStorage[tc.key] = tc.list
+            }
+        }
+
+        for _, tc := range testCases {
+            length, err := db.LeftPush(tc.key, tc.inputValues...)
+            if err != nil {
+                t.Errorf("Error left pushing values to key, got error %#v.\n", err)
+            }
+
+            if length != tc.expectedLength {
+                t.Errorf("Error list expectedLength: expected %d, got %d.\n", tc.expectedLength, length)
+            } else {
+                head := db.listStorage[tc.key]
+                temp := head
+                gotArr := make([]string, 0)
+                for temp != nil {
+                    gotArr = append(gotArr, temp.value)
+                    temp = temp.next
+                }
+
+                for n, ele := range gotArr {
+                    if ele != tc.expectedArr[n] {
+                        t.Errorf("Error left pushing values: expected %s, got %s.\n", tc.expectedArr[n], ele)
+                    }
+                }
+            }
+        }
+    })
+
+    t.Run("Test LeftPush: Incorrect input", func(t *testing.T) {
+
+    })
 }
 
 func TestDb_RightPush(t *testing.T) {
+    db := New()
+    t.Run("Test RightPush: Correct input", func(t *testing.T) {
+        testCases := []struct {
+            key            string
+            list           *StrNode
+            inputValues    []string
+            expectedLength int
+            expectedArr    []string
+        }{
+            {
+                key:            "bar_list",
+                list:           nil,
+                inputValues:    []string{"hello world", "1"},
+                expectedLength: 2,
+                expectedArr:    []string{"hello world", "1"},
+            },
+            {
+                key: "foo_list",
+                list: &StrNode{
+                    value: "1",
+                    next: &StrNode{
+                        value: "2",
+                        next:  nil,
+                    },
+                },
+                expectedLength: 4,
+                inputValues:    []string{"a", "b"},
+                expectedArr:    []string{"1", "2", "a", "b"},
+            },
+        }
 
+        for _, tc := range testCases {
+            if tc.list != nil {
+                // Since we want to test lpush to a key that doesn't exist, we don't create key in the listStorage if tc.list == nil.
+                db.listStorage[tc.key] = tc.list
+            }
+        }
+
+        for _, tc := range testCases {
+            length, err := db.RightPush(tc.key, tc.inputValues...)
+            if err != nil {
+                t.Errorf("Error right pushing values to key, got error %#v.\n", err)
+            }
+
+            if length != tc.expectedLength {
+                t.Errorf("Error list expectedLength: expected %d, got %d.\n", tc.expectedLength, length)
+            } else {
+                head := db.listStorage[tc.key]
+                temp := head
+                gotArr := make([]string, 0)
+                for temp != nil {
+                    gotArr = append(gotArr, temp.value)
+                    temp = temp.next
+                }
+
+                for n, ele := range gotArr {
+                    if ele != tc.expectedArr[n] {
+                        t.Errorf("Error left pushing values: expected %s, got %s.\n", tc.expectedArr[n], ele)
+                    }
+                }
+            }
+        }
+    })
 }
