@@ -497,7 +497,25 @@ func TestDb_LeftPush(t *testing.T) {
     })
 
     t.Run("Test LeftPush: Incorrect input", func(t *testing.T) {
+        // Insert some key-value in the database and left push to the key.
+        incorrectKVs := []struct {
+            key   string
+            value string
+        }{
+            {key: "foo", value: "bar"},
+            {key: "x", value: "1"},
+        }
 
+        for _, kv := range incorrectKVs {
+            db.stringStorage[kv.key] = kv.value
+        }
+
+        for _, kv := range incorrectKVs {
+            _, err := db.LeftPush(kv.key, kv.value)
+            if !errors.Is(err, ErrNotList) {
+                t.Errorf("Error incorrect error: expected %#v, got %#v.\n", ErrNotList, err)
+            }
+        }
     })
 }
 
@@ -562,6 +580,28 @@ func TestDb_RightPush(t *testing.T) {
                         t.Errorf("Error left pushing values: expected %s, got %s.\n", tc.expectedArr[n], ele)
                     }
                 }
+            }
+        }
+    })
+
+    t.Run("Test RightPush: Incorrect input", func(t *testing.T) {
+        // Insert some key-value in the database and left push to the key.
+        incorrectKVs := []struct {
+            key   string
+            value string
+        }{
+            {key: "foo", value: "bar"},
+            {key: "x", value: "1"},
+        }
+
+        for _, kv := range incorrectKVs {
+            db.stringStorage[kv.key] = kv.value
+        }
+
+        for _, kv := range incorrectKVs {
+            _, err := db.RightPush(kv.key, kv.value)
+            if !errors.Is(err, ErrNotList) {
+                t.Errorf("Error incorrect error: expected %#v, got %#v.\n", ErrNotList, err)
             }
         }
     })
