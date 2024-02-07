@@ -431,6 +431,19 @@ func TestDb_Decrement(t *testing.T) {
     })
 }
 
+func TestDb_LRange(t *testing.T) {
+    db := New()
+    db.stringStorage["x"] = "1"
+
+    // We only test for the incorrect ones here. The correct ones were tested already.
+    incorrectKey := "x"
+    // number is random since we're not testing the actual ranging.
+    _, err := db.LRange(incorrectKey, 0, 0)
+    if !errors.Is(err, ErrNotList) {
+        t.Errorf("Error incorrect error: expected %#v, got %#v.\n", ErrNotList, err)
+    }
+}
+
 func TestDb_LeftPush(t *testing.T) {
     db := New()
     t.Run("Test LeftPush: Correct input", func(t *testing.T) {
