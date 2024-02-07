@@ -72,3 +72,52 @@ func (s *StrNode) Len() int {
     }
     return count
 }
+
+// arr returns a string array representation of a StrNode.
+func (s *StrNode) arr() []string {
+    re := make([]string, 0)
+    temp := s
+    for temp != nil {
+        re = append(re, temp.value)
+        temp = temp.next
+    }
+    return re
+}
+
+// LRange returns the elements from offsets start and stop.
+func (s *StrNode) LRange(start, stop int) []string {
+    arr := s.arr()
+    listLength := len(arr)
+
+    // Check start index and modify it.
+    if start < 0 {
+        if start < -listLength {
+            start = 0
+        } else {
+            start += listLength
+        }
+    }
+
+    if start > listLength {
+        return []string{}
+    }
+
+    // Check the stop index and modify it.
+    if stop < 0 {
+        if stop < -listLength {
+            stop = 0
+        } else {
+            stop += listLength
+        }
+    }
+
+    if stop > listLength {
+        stop = listLength - 1
+    }
+
+    if stop < start {
+        return []string{}
+    }
+
+    return arr[start : stop+1]
+}
