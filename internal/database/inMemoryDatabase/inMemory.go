@@ -140,6 +140,9 @@ func (d *Db) Decrement(key string) error {
 // If stop is larger than the actual end of the list, LRange will treat it like the last element of the list.
 // If the key doesn't exist, returns an empty list.
 func (d *Db) LRange(key string, start, stop int) ([]string, error) {
+    d.mu.RLock()
+    defer d.mu.RUnlock()
+
     if _, ok := d.stringStorage[key]; ok {
         // Values having wrong type.
         return nil, ErrNotList
@@ -159,6 +162,9 @@ func (d *Db) LRange(key string, start, stop int) ([]string, error) {
 // Elements are inserted one after the other to the head of the list, from the leftmost element to the rightmost element.
 // So for instance the command `LPUSH myList a b c` will result into a list containing `c` as first element, `b` as second element and `a` as third element.
 func (d *Db) LeftPush(key string, values ...string) (int, error) {
+    d.mu.Lock()
+    defer d.mu.Unlock()
+
     _, inStringStorage := d.stringStorage[key]
     if inStringStorage {
         return 0, ErrNotList
@@ -185,6 +191,9 @@ func (d *Db) LeftPush(key string, values ...string) (int, error) {
 // Elements are inserted one after the other to the tail of the list, from the leftmost element to the rightmost element.
 // So for instance the command `RPUSH myList a b c` will result into a list containing `a` as first element, `b` as second element and `c` as third element.
 func (d *Db) RightPush(key string, values ...string) (int, error) {
+    d.mu.Lock()
+    defer d.mu.Unlock()
+
     _, inStringStorage := d.stringStorage[key]
     if inStringStorage {
         return 0, ErrNotList
