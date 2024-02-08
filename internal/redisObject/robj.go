@@ -2,6 +2,7 @@ package redisObject
 
 import (
     "errors"
+    "strconv"
     "strings"
 )
 
@@ -16,25 +17,38 @@ const (
 
 var ErrInvalidCommand = errors.New("error invalid command")
 
-var cmdTable = map[string]int{
-    "null":   1,
-    "ping":   1,
-    "echo":   2,
-    "quit":   1,
-    "set":    3,
-    "get":    2,
-    "exists": 2,
-    "delete": 2,
-    "incr":   2,
-    "decr":   2,
-    "save":   1,
-    "bgsave": 1,
+const (
+    FIX      = "fix"
+    OPTIONAL = "optional"
+    MULTIPLE = "multiple"
+)
+
+var cmdTable = map[string]struct {
+    cmdType      string
+    expectedArgs int
+}{
+    "null":   {},
+    "ping":   {cmdType: FIX, expectedArgs: 0},
+    "echo":   {cmdType: FIX, expectedArgs: 1},
+    "quit":   {cmdType: FIX, expectedArgs: 0},
+    "get":    {cmdType: FIX, expectedArgs: 1},
+    "exists": {cmdType: FIX, expectedArgs: 1},
+    "incr":   {cmdType: FIX, expectedArgs: 1},
+    "decr":   {cmdType: FIX, expectedArgs: 1},
+    "save":   {cmdType: FIX, expectedArgs: 0},
+    "load":   {cmdType: FIX, expectedArgs: 0},
+    "lrange": {cmdType: FIX, expectedArgs: 3},
+    "set":    {cmdType: OPTIONAL, expectedArgs: -1},
+    "del":    {cmdType: MULTIPLE, expectedArgs: -1},
+    "lpush":  {cmdType: MULTIPLE, expectedArgs: -1},
+    "rpush":  {cmdType: MULTIPLE, expectedArgs: -1},
 }
 
 type RObj struct {
-    Type    string
-    Command string
-    Content []string
+    Type       string
+    Command    string
+    TimeToLive int
+    Content    []string
 }
 
 // New deserializes the client request and creates a RObj.
@@ -111,38 +125,110 @@ func Deserialize(req []byte) (*RObj, error) {
                 }
 
                 robj.Command = strings.ToLower(cmd)
-                if expectedArgs, ok := cmdTable[robj.Command]; !ok {
+                currentCmd, ok := cmdTable[robj.Command]
+                if !ok {
+                    // Command doesn't exist.
                     return nil, ErrInvalidCommand
-                } else {
-                    if elementNumber != expectedArgs {
+                }
+
+                switch cmdTable[robj.Command].cmdType {
+                case FIX:
+                    if elementNumber != currentCmd.expectedArgs {
+                        return nil, ErrInvalidCommand
+                    }
+
+                    for len(req) != 0 {
+                        msgLength, theRestOfTheInput, err := parseLength(req)
+                        if err != nil {
+                            return nil, err
+                        }
+                        req = theRestOfTheInput
+
+                        msg, theRestOfTheInput, err := parseMessage(req)
+                        if err != nil {
+                            return nil, err
+                        }
+                        req = theRestOfTheInput
+
+                        if len(msg) != msgLength {
+                            return nil, ErrInvalidCommand
+                        }
+                        content = append(content, msg)
+                    }
+
+                    if len(content) != currentCmd.expectedArgs-1 {
+                        return nil, ErrInvalidCommand
+                    }
+                case MULTIPLE:
+                    for len(req) != 0 {
+                        msgLength, theRestOfTheInput, err := parseLength(req)
+                        if err != nil {
+                            return nil, err
+                        }
+                        req = theRestOfTheInput
+
+                        msg, theRestOfTheInput, err := parseMessage(req)
+                        if err != nil {
+                            return nil, err
+                        }
+                        req = theRestOfTheInput
+
+                        if len(msg) != msgLength {
+                            return nil, ErrInvalidCommand
+                        }
+                        content = append(content, msg)
+                    }
+                    if len(content) == 0 {
+                        return nil, ErrInvalidCommand
+                    }
+
+                case OPTIONAL:
+                    for len(req) != 0 {
+                        msgLength, theRestOfTheInput, err := parseLength(req)
+                        if err != nil {
+                            return nil, err
+                        }
+                        req = theRestOfTheInput
+
+                        msg, theRestOfTheInput, err := parseMessage(req)
+                        if err != nil {
+                            return nil, err
+                        }
+                        req = theRestOfTheInput
+
+                        if len(msg) != msgLength {
+                            return nil, ErrInvalidCommand
+                        }
+                        content = append(content, msg)
+                    }
+                    if len(content) == 2 || len(content) == 4 {
+                        // For set commands there's optional tags like EX, PX, EAXT, PXAT...
+                        if len(content) == 4 {
+                            // Check the optional tags
+                            optionalCmd := content[2]
+                            timeArg, err := strconv.Atoi(content[3])
+                            if err != nil {
+                                // The given argument after tag isn't a string.
+                                return nil, ErrInvalidCommand
+                            }
+
+                            switch optionalCmd {
+                            case "EX":
+                                robj.TimeToLive = timeArg
+                            case "PX":
+                            case "EAXT":
+                            case "PXAT":
+                            default:
+                                return nil, ErrInvalidCommand
+                            }
+                        }
+                    } else {
                         return nil, ErrInvalidCommand
                     }
                 }
-
-                for len(req) != 0 {
-                    msgLength, theRestOfTheInput, err := parseLength(req)
-                    if err != nil {
-                        return nil, err
-                    }
-                    req = theRestOfTheInput
-
-                    msg, theRestOfTheInput, err := parseMessage(req)
-                    if err != nil {
-                        return nil, err
-                    }
-                    req = theRestOfTheInput
-
-                    if len(msg) != msgLength {
-                        return nil, ErrInvalidCommand
-                    }
-                    content = append(content, msg)
-                }
-
-                if len(content) != cmdTable[robj.Command]-1 {
-                    return nil, ErrInvalidCommand
-                }
+            default:
+                return nil, ErrInvalidCommand
             }
-
             robj.Content = content
         }
 
