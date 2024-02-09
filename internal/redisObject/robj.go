@@ -133,74 +133,36 @@ func Deserialize(req []byte) (*RObj, error) {
 
                 switch cmdTable[robj.Command].cmdType {
                 case FIX:
+                    // The numbers of element should be exactly the same as expectedArgs.
                     if elementNumber != currentCmd.expectedArgs {
                         return nil, ErrInvalidCommand
                     }
 
-                    for len(req) != 0 {
-                        msgLength, theRestOfTheInput, err := parseLength(req)
-                        if err != nil {
-                            return nil, err
-                        }
-                        req = theRestOfTheInput
-
-                        msg, theRestOfTheInput, err := parseMessage(req)
-                        if err != nil {
-                            return nil, err
-                        }
-                        req = theRestOfTheInput
-
-                        if len(msg) != msgLength {
-                            return nil, ErrInvalidCommand
-                        }
-                        content = append(content, msg)
+                    content, err = parseContent(req)
+                    if err != nil {
+                        return nil, err
                     }
 
+                    // The content number should be exactly the same as expectedArgs - 1 ( which is after subtracting 1, the command argument)
                     if len(content) != currentCmd.expectedArgs-1 {
                         return nil, ErrInvalidCommand
                     }
                 case MULTIPLE:
-                    for len(req) != 0 {
-                        msgLength, theRestOfTheInput, err := parseLength(req)
-                        if err != nil {
-                            return nil, err
-                        }
-                        req = theRestOfTheInput
-
-                        msg, theRestOfTheInput, err := parseMessage(req)
-                        if err != nil {
-                            return nil, err
-                        }
-                        req = theRestOfTheInput
-
-                        if len(msg) != msgLength {
-                            return nil, ErrInvalidCommand
-                        }
-                        content = append(content, msg)
+                    content, err = parseContent(req)
+                    if err != nil {
+                        return nil, err
                     }
+                    // There should be at least one element in the contents of a MULTIPLE type command.
                     if len(content) == 0 {
                         return nil, ErrInvalidCommand
                     }
 
                 case OPTIONAL:
-                    for len(req) != 0 {
-                        msgLength, theRestOfTheInput, err := parseLength(req)
-                        if err != nil {
-                            return nil, err
-                        }
-                        req = theRestOfTheInput
-
-                        msg, theRestOfTheInput, err := parseMessage(req)
-                        if err != nil {
-                            return nil, err
-                        }
-                        req = theRestOfTheInput
-
-                        if len(msg) != msgLength {
-                            return nil, ErrInvalidCommand
-                        }
-                        content = append(content, msg)
+                    content, err = parseContent(req)
+                    if err != nil {
+                        return nil, err
                     }
+
                     if len(content) == 2 || len(content) == 4 {
                         // For set commands there's optional tags like EX, PX, EAXT, PXAT...
                         if len(content) == 4 {
@@ -231,12 +193,37 @@ func Deserialize(req []byte) (*RObj, error) {
             }
             robj.Content = content
         }
-
     default:
         return nil, ErrInvalidCommand
     }
 
     return robj, nil
+}
+
+// parseContent is a helper function that should be called after parsing the command in a RESP format byte.
+// The function
+func parseContent(req []byte) ([]string, error) {
+    content := make([]string, 0)
+    for len(req) != 0 {
+        msgLength, theRestOfTheInput, err := parseLength(req)
+        if err != nil {
+            return nil, err
+        }
+        req = theRestOfTheInput
+
+        msg, theRestOfTheInput, err := parseMessage(req)
+        if err != nil {
+            return nil, err
+        }
+        req = theRestOfTheInput
+
+        if len(msg) != msgLength {
+            return nil, ErrInvalidCommand
+        }
+        content = append(content, msg)
+    }
+
+    return content, nil
 }
 
 func parseLength(input []byte) (int, []byte, error) {
