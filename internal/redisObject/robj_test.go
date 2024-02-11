@@ -59,20 +59,60 @@ func Test_Deserialize(t *testing.T) {
                 result: &RObj{Type: BulkStrings, Content: []string{""}},
             },
             {
-                input:  []byte("*1\r\n$4\r\nPING\r\n"), // Arrays.
+                input:  []byte("*1\r\n$4\r\nPING\r\n"), // Arrays: PING.
                 result: &RObj{Type: Arrays, Command: "ping"},
             },
             {
-                input:  []byte("*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n"),
+                input:  []byte("*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n"), // Arrays: ECHO.
                 result: &RObj{Type: Arrays, Command: "echo", Content: []string{"hello world"}},
             },
             {
-                input:  []byte("*2\r\n$3\r\nget\r\n$3\r\nkey\r\n"),
+                input:  []byte("*2\r\n$3\r\nget\r\n$3\r\nkey\r\n"), // Arrays: GET.
                 result: &RObj{Type: Arrays, Command: "get", Content: []string{"key"}},
             },
             {
-                input: []byte("*3\r\n$3\r\nset\r\n$5\r\nmykey\r\n$1\r\n1\r\n"),
+                input: []byte("*3\r\n$3\r\nset\r\n$5\r\nmykey\r\n$1\r\n1\r\n"), // Arrays: SET.
                 result: &RObj{Type: Arrays, Command: "set", Content: []string{"mykey", "1"},
+                },
+            },
+            {
+                input: []byte("*5\r\n$3\r\nset\r\n$5\r\nmykey\r\n$1\r\n1\r\n$2\r\nEX\r\n$2\r\n12\r\n"), // Arrays: SET with EX.
+                result: &RObj{Type: Arrays, Command: "set", Content: []string{"mykey", "1", "EX", "12"},
+                },
+            },
+            {
+                input: []byte("*5\r\n$3\r\ndel\r\n$5\r\nmykey\r\n$1\r\n1\r\n$5\r\nhello\r\n$3\r\nfoo\r\n"), // Arrays: DEL keys.
+                result: &RObj{Type: Arrays, Command: "del", Content: []string{"mykey", "1", "hello", "foo"},
+                },
+            },
+            {
+                input: []byte("*2\r\n$6\r\nexists\r\n$1\r\nx\r\n"), // Arrays: EXISTS.
+                result: &RObj{Type: Arrays, Command: "exists", Content: []string{"x"},
+                },
+            },
+            {
+                input: []byte("*2\r\n$4\r\nincr\r\n$5\r\nmykey\r\n"), // Arrays: INCR.
+                result: &RObj{Type: Arrays, Command: "incr", Content: []string{"mykey"},
+                },
+            },
+            {
+                input: []byte("*2\r\n$4\r\ndecr\r\n$5\r\nmykey\r\n"), // Arrays: DECR.
+                result: &RObj{Type: Arrays, Command: "decr", Content: []string{"mykey"},
+                },
+            },
+            {
+                input: []byte("*4\r\n$5\r\nlpush\r\n$5\r\nmykey\r\n$1\r\n1\r\n$5\r\nhello\r\n"), // Arrays: LPUSH.
+                result: &RObj{Type: Arrays, Command: "lpush", Content: []string{"mykey", "1", "hello"},
+                },
+            },
+            {
+                input: []byte("*4\r\n$5\r\nrpush\r\n$5\r\nmykey\r\n$1\r\n1\r\n$5\r\nhello\r\n"), // Arrays: RPUSH.
+                result: &RObj{Type: Arrays, Command: "rpush", Content: []string{"mykey", "1", "hello"},
+                },
+            },
+            {
+                input: []byte("*4\r\n$6\r\nlrange\r\n$5\r\nmykey\r\n$1\r\n1\r\n$1\r\n2\r\n"), // Arrays: LRANGE.
+                result: &RObj{Type: Arrays, Command: "lrange", Content: []string{"mykey", "1", "2"},
                 },
             },
         }
@@ -95,8 +135,8 @@ func Test_Deserialize(t *testing.T) {
 
             // Check if the length of the content is as expected.
 
-            if tc.result.Command != "" && len(robj.Content) != cmdTable[tc.result.Command]-1 {
-                t.Errorf("error deserializing - incorrect content length: expected %d, got %d.\n", cmdTable[tc.result.Command]-1, len(robj.Content))
+            if tc.result.Command != "" && len(robj.Content) != len(tc.result.Content) {
+                t.Errorf("error deserializing - incorrect content length: expected %d, got %d.\n", len(tc.result.Content), len(robj.Content))
             } else {
                 // Compare the contents in robj.
                 for n, c := range robj.Content {
