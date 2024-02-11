@@ -200,7 +200,7 @@ func Deserialize(req []byte) (*RObj, error) {
     return robj, nil
 }
 
-// parseContent is a helper function that should be called after parsing the command in a RESP format byte.
+// parseContent is a helper function that should be called after parsing the command from a RESP format byte.
 // The function parses the req two steps a time, with the first step parsing the length of the element and the second step parsing the actual element.
 func parseContent(req []byte) ([]string, error) {
     content := make([]string, 0)
@@ -229,6 +229,7 @@ func parseContent(req []byte) ([]string, error) {
     return content, nil
 }
 
+// parseMessage reads length from a request.
 func parseLength(input []byte) (int, []byte, error) {
     length := 0
 
@@ -250,6 +251,7 @@ func parseLength(input []byte) (int, []byte, error) {
     }
 }
 
+// parseMessage reads message from a request.
 func parseMessage(input []byte) (string, []byte, error) {
     messageByteArr := make([]byte, 0)
     for input[0] != '\r' {
