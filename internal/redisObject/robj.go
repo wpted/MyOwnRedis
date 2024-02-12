@@ -30,7 +30,7 @@ var cmdTable = map[string]struct {
 }{
     "null":   {},
     "ping":   {cmdType: FIX, expectedArgs: 0},
-    "echo":   {cmdType: FIX, expectedArgs: 1},
+    "echo":   {cmdType: MULTIPLE, expectedArgs: -1},
     "quit":   {cmdType: FIX, expectedArgs: 0},
     "get":    {cmdType: FIX, expectedArgs: 1},
     "exists": {cmdType: FIX, expectedArgs: 1},
@@ -63,7 +63,6 @@ func Deserialize(req []byte) (*RObj, error) {
         return nil, ErrInvalidCommand
     }
 
-    fmt.Println(req)
     var robj = new(RObj)
     switch req[0] {
     // 1. SimpleErrors, SimpleStrings
