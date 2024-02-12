@@ -227,8 +227,11 @@ func TestDb_Delete(t *testing.T) {
         "",                   // no-op
     }
 
-    for _, keyToDelete := range keysToDelete {
-        db.Delete(keyToDelete)
+    deletedKeys := db.Delete(keysToDelete...)
+
+    // Check if the number of the deleted key matches.
+    if deletedKeys != 2 {
+        t.Errorf("Error number of keys that were removed: expected %d, got %d.\n", 2, deletedKeys)
     }
 
     testCases := []struct {
