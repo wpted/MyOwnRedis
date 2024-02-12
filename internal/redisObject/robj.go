@@ -2,6 +2,7 @@ package redisObject
 
 import (
     "errors"
+    "fmt"
     "strconv"
     "strings"
 )
@@ -9,7 +10,7 @@ import (
 const (
     NULL          = "null"
     SimpleStrings = "+"
-    SimplerErrors = "-"
+    SimpleErrors  = "-"
     Integers      = ":"
     BulkStrings   = "$"
     Arrays        = "*"
@@ -62,6 +63,7 @@ func Deserialize(req []byte) (*RObj, error) {
         return nil, ErrInvalidCommand
     }
 
+    fmt.Println(req)
     var robj = new(RObj)
     switch req[0] {
     // 1. SimpleErrors, SimpleStrings
@@ -137,15 +139,16 @@ func Deserialize(req []byte) (*RObj, error) {
                     if elementNumber-1 != currentCmd.expectedArgs {
                         return nil, ErrInvalidCommand
                     }
+                    if currentCmd.expectedArgs != 0 {
+                        content, err = parseContent(req)
+                        if err != nil {
+                            return nil, err
+                        }
 
-                    content, err = parseContent(req)
-                    if err != nil {
-                        return nil, err
-                    }
-
-                    // The content number should be exactly the same as expectedArgs.
-                    if len(content) != currentCmd.expectedArgs {
-                        return nil, ErrInvalidCommand
+                        // The content number should be exactly the same as expectedArgs.
+                        if len(content) != currentCmd.expectedArgs {
+                            return nil, ErrInvalidCommand
+                        }
                     }
                 case MULTIPLE:
                     content, err = parseContent(req)
@@ -266,4 +269,20 @@ func parseMessage(input []byte) (string, []byte, error) {
         theRestOfTheInput := input[2:]
         return string(messageByteArr), theRestOfTheInput, nil
     }
+}
+
+func Serialize(responseType string, data ...string) []byte {
+    var re []byte
+    switch responseType {
+    case SimpleStrings:
+        re = []byte(fmt.Sprintf("%s%s\r\n", SimpleStrings, data[0]))
+    case SimpleErrors:
+        re = []byte(fmt.Sprintf("%s%s\r\n", SimpleErrors, data[0]))
+    case Arrays:
+    case Integers:
+        re = []byte(fmt.Sprintf("%s%s\r\n", Integers, data[0]))
+    case BulkStrings:
+        re = []byte(fmt.Sprintf("%s%d\r\n%s\r\n", BulkStrings, len(data[0]), data[0]))
+    }
+    return re
 }
