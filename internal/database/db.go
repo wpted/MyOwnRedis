@@ -4,7 +4,7 @@ type MemDb interface {
     Set(key string, value string)
     Get(key string) (string, error)
     Exists(key string) bool
-    Delete(key string)
+    Delete(keys ...string) int
     Increment(key string) error
     Decrement(key string) error
     LeftPush(key string, values ...string) (int, error)
