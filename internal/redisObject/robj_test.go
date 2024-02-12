@@ -44,7 +44,7 @@ func Test_Deserialize(t *testing.T) {
             },
             {
                 input:  []byte("-Error message\r\n"), // Errors.
-                result: &RObj{Type: SimplerErrors, Content: []string{"Error message"}},
+                result: &RObj{Type: SimpleErrors, Content: []string{"Error message"}},
             },
             {
                 input:  []byte("+OK\r\n"), // Simple strings.
@@ -63,8 +63,8 @@ func Test_Deserialize(t *testing.T) {
                 result: &RObj{Type: Arrays, Command: "ping"},
             },
             {
-                input:  []byte("*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n"), // Arrays: ECHO.
-                result: &RObj{Type: Arrays, Command: "echo", Content: []string{"hello world"}},
+                input:  []byte("*3\r\n$4\r\necho\r\n$5\r\nhello\r\n$5\r\nworld\r\n"), // Arrays: ECHO.
+                result: &RObj{Type: Arrays, Command: "echo", Content: []string{"hello", "world"}},
             },
             {
                 input:  []byte("*2\r\n$3\r\nget\r\n$3\r\nkey\r\n"), // Arrays: GET.
