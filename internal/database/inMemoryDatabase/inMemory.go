@@ -71,17 +71,29 @@ func (d *Db) Exists(key string) bool {
     return strOk || listOk
 }
 
-// Delete removes the specified key. The action is ignored if the key doesn't exists.
-func (d *Db) Delete(key string) {
+// Delete removes the specified key and returns numbers of the actual deleted key.
+// The action is ignored if the keys doesn't exist.
+func (d *Db) Delete(keys ...string) int {
     d.mu.Lock()
     defer d.mu.Unlock()
 
+    var deletedKeys int
     // delete is a no-op if the key doesn't exist in the map.
-    delete(d.stringStorage, key)
-    delete(d.listStorage, key)
+    for _, key := range keys {
+        _, inStringStorage := d.stringStorage[key]
+        _, inListStorage := d.listStorage[key]
+        if inStringStorage || inListStorage {
+            deletedKeys++
+        }
+
+        delete(d.stringStorage, key)
+        delete(d.listStorage, key)
+    }
+
+    return deletedKeys
 }
 
-// Increment increments the number stored at key by 1. If the key doesn't exists, it is set to 0 before performing the operation.
+// Increment increments the number stored at key by 1. If the key doesn't exist, it is set to 0 before performing the operation.
 // An error is returned if the key contains a value of the wrong type or contains a string that cannot be represented as integer.
 // The whole function should be a string operation because Redis does not have a dedicated integer type ( where all values in Redis are stored in their strings ).
 func (d *Db) Increment(key string) error {
