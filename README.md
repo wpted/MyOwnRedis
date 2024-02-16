@@ -101,3 +101,7 @@ For example, if we were to send `PING` to the server from the client side, `PING
 - [How to test TCP/UDP connection in Go](https://dev.to/williamhgough/how-to-test-tcpudp-connections-in-go---part-1-3bga)
 - [Understanding the Redis protocol](https://subscription.packtpub.com/book/data/9781783988167/1/ch01lvl1sec17/understanding-the-redis-protocol)
 - [Introduction to RESP](https://medium.com/@dassomnath/introduction-to-resp-redis-serialization-protocol-f3d0b8bd9cdc)
+- [Data Fetching Patterns](https://nextjs.org/docs/app/building-your-application/data-fetching/patterns)
+- [The Complete Guide to TCP/IP Connections in Golang](https://okanexe.medium.com/the-complete-guide-to-tcp-ip-connections-in-golang-1216dae27b5a)
+- [Redis Client Handling](https://redis.io/docs/reference/clients/)
+- [How to test TCP/UDP connections in Go](https://dev.to/williamhgough/how-to-test-tcpudp-connections-in-go---part-1-3bga)
