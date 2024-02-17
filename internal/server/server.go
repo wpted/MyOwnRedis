@@ -76,7 +76,7 @@ func (r *RedisServer) Run() error {
 
                 // Handle request.
                 var response []byte
-                response, err = r.handleRequest(req)
+                response = r.handleRequest(req)
                 if err != nil {
                     break
                 }
@@ -96,80 +96,106 @@ func (r *RedisServer) Close() error {
     return r.l.Close()
 }
 
-func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
-    var resp []byte
-    switch robj.Command {
-    case "ping":
-        resp = redisObject.Serialize(redisObject.SimpleStrings, "PONG")
-    case "echo":
-        resp = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
-    case "set":
-        // Any SET operation will be successful and previous value is discarded.
-        // The command should always return '+OK\r\n'.
-        r.db.Set(robj.Content[0], robj.Content[1])
-        resp = redisObject.Serialize(redisObject.SimpleStrings, "OK")
-    case "get":
-        value, err := r.db.Get(robj.Content[0])
-        if err != nil {
-            // The error here can only be clients trying to get from the lrange database.
-            resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
-        } else {
-            // Check for nil values.
-            if value == inMemoryDatabase.NIL {
-                resp = redisObject.Serialize(redisObject.BulkStrings, "-1")
-            } else {
-                resp = redisObject.Serialize(redisObject.SimpleStrings, value)
-            }
-
-            // Do we have to check whether the value is an integer?
-        }
-    case "del":
-        keysDeleted := r.db.Delete(robj.Content...)
-        // Integer response.
-        resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(keysDeleted))
-    case "exists":
-        // Integer response. 1 for found key, 0 otherwise.
-        if r.db.Exists(robj.Content[0]) {
-            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(1))
-        } else {
-            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(0))
-        }
-    case "incr":
-        value, err := r.db.Increment(robj.Content[0])
-        if err != nil {
-            resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
-        } else {
-            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
-        }
-    case "decr":
-        value, err := r.db.Decrement(robj.Content[0])
-        if err != nil {
-            resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
-        } else {
-            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
-        }
-    case "save":
-    case "load":
-    case "lpush":
-    case "rpush":
-    case "lrange":
-    case "command": // This is for starting up, which will never show on the client side.
-        resp = redisObject.Serialize(redisObject.SimpleStrings, "Hello, Edward's Redis.")
-    }
-    return resp, nil
-}
-
-func (r *RedisServer) handleRequest(request []byte) ([]byte, error) {
+func (r *RedisServer) handleRequest(request []byte) []byte {
     var response []byte
 
     robj, err := redisObject.Deserialize(request)
     if err != nil {
-        response = redisObject.Serialize(redisObject.SimpleErrors, err.Error())
-    }
-    response, err = r.evaluate(robj)
-    if err != nil {
+        response = redisObject.Serialize(redisObject.SimpleErrors, "Unknown or disabled command")
+    } else {
+        switch robj.Command {
+        case "ping":
+            response = redisObject.Serialize(redisObject.SimpleStrings, "PONG")
+        case "echo":
+            response = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
+        case "set":
+            // Any SET operation will be successful and previous value is discarded.
+            // The command should always return '+OK\r\n'.
+            r.db.Set(robj.Content[0], robj.Content[1])
+            response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
+        case "get":
+            value, err := r.db.Get(robj.Content[0])
+            if err != nil {
+                // The error here can only be clients trying to get from the lrange database.
+                response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
+            } else {
+                // Check for nil values.
+                if value == inMemoryDatabase.NIL {
+                    response = redisObject.Serialize(redisObject.BulkStrings, "-1")
+                    return response
+                }
+                response = redisObject.Serialize(redisObject.SimpleStrings, value)
+                // Do we have to check whether the value is an integer?
+            }
+        case "del":
+            keysDeleted := r.db.Delete(robj.Content...)
+            // Integer response.
+            response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(keysDeleted))
+        case "exists":
+            // Integer response. 1 for found key, 0 otherwise.
+            if r.db.Exists(robj.Content[0]) {
+                response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(1))
+                return response
+            }
+            response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(0))
 
-    }
+        case "incr":
+            value, err := r.db.Increment(robj.Content[0])
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
+                return response
+            }
+            response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
+        case "decr":
+            value, err := r.db.Decrement(robj.Content[0])
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
+                return response
+            }
+            response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
+        case "save":
+        case "load":
+        case "lpush":
+            valuesPushed, err := r.db.LeftPush(robj.Content[0], robj.Content[1:]...)
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
+                return response
+            }
+            response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(valuesPushed))
 
-    return response, nil
+        case "rpush":
+            valuesPushed, err := r.db.RightPush(robj.Content[0], robj.Content[1:]...)
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
+                return response
+            }
+            response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(valuesPushed))
+
+        case "lrange":
+            // Need to type check the start and end.
+            start, err := strconv.Atoi(robj.Content[1])
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "ERR value is not an integer or out of range")
+                return response
+            }
+
+            end, err := strconv.Atoi(robj.Content[2])
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "ERR value is not an integer or out of range")
+                return response
+            }
+
+            var result []string
+            result, err = r.db.LRange(robj.Content[0], start, end)
+            if err != nil {
+                response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
+                return response
+            }
+            response = redisObject.Serialize(redisObject.Arrays, result...)
+
+        case "command": // This is for starting up, which will never show on the client side.
+            response = redisObject.Serialize(redisObject.SimpleStrings, "Hello, Edward's Redis.")
+        }
+    }
+    return response
 }
