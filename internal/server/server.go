@@ -128,6 +128,12 @@ func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
         // Integer response.
         resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(keysDeleted))
     case "exists":
+        // Integer response. 1 for found key, 0 otherwise.
+        if r.db.Exists(robj.Content[0]) {
+            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(1))
+        } else {
+            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(0))
+        }
     case "incr":
     case "decr":
     case "save":
