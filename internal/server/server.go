@@ -135,6 +135,12 @@ func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
             resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(0))
         }
     case "incr":
+        value, err := r.db.Increment(robj.Content[0])
+        if err != nil {
+            resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
+        } else {
+            resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
+        }
     case "decr":
     case "save":
     case "load":
