@@ -28,21 +28,22 @@ var cmdTable = map[string]struct {
     cmdType      string
     expectedArgs int
 }{
-    "null":   {},
-    "ping":   {cmdType: FIX, expectedArgs: 0},
-    "echo":   {cmdType: MULTIPLE, expectedArgs: -1},
-    "quit":   {cmdType: FIX, expectedArgs: 0},
-    "get":    {cmdType: FIX, expectedArgs: 1},
-    "exists": {cmdType: FIX, expectedArgs: 1},
-    "incr":   {cmdType: FIX, expectedArgs: 1},
-    "decr":   {cmdType: FIX, expectedArgs: 1},
-    "save":   {cmdType: FIX, expectedArgs: 0},
-    "load":   {cmdType: FIX, expectedArgs: 0},
-    "lrange": {cmdType: FIX, expectedArgs: 3},
-    "set":    {cmdType: OPTIONAL, expectedArgs: -1},
-    "del":    {cmdType: MULTIPLE, expectedArgs: -1},
-    "lpush":  {cmdType: MULTIPLE, expectedArgs: -1},
-    "rpush":  {cmdType: MULTIPLE, expectedArgs: -1},
+    "null":    {},
+    "command": {cmdType: FIX, expectedArgs: 1}, // expected to follow by docs, but for now it doesn't matter.
+    "ping":    {cmdType: FIX, expectedArgs: 0},
+    "echo":    {cmdType: MULTIPLE, expectedArgs: -1},
+    "quit":    {cmdType: FIX, expectedArgs: 0},
+    "get":     {cmdType: FIX, expectedArgs: 1},
+    "exists":  {cmdType: FIX, expectedArgs: 1},
+    "incr":    {cmdType: FIX, expectedArgs: 1},
+    "decr":    {cmdType: FIX, expectedArgs: 1},
+    "save":    {cmdType: FIX, expectedArgs: 0},
+    "load":    {cmdType: FIX, expectedArgs: 0},
+    "lrange":  {cmdType: FIX, expectedArgs: 3},
+    "set":     {cmdType: OPTIONAL, expectedArgs: -1},
+    "del":     {cmdType: MULTIPLE, expectedArgs: -1},
+    "lpush":   {cmdType: MULTIPLE, expectedArgs: -1},
+    "rpush":   {cmdType: MULTIPLE, expectedArgs: -1},
 }
 
 type RObj struct {
