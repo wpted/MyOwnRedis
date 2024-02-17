@@ -35,6 +35,11 @@ func New() *Db {
 func (d *Db) Set(key string, value string) {
     d.mu.Lock()
     defer d.mu.Unlock()
+    // Check if key is in listStorage.
+    if _, ok := d.listStorage[key]; ok {
+        // Delete the key-value pair if existed.
+        delete(d.listStorage, key)
+    }
 
     d.stringStorage[key] = value
 }
