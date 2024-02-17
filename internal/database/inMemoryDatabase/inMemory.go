@@ -101,28 +101,31 @@ func (d *Db) Delete(keys ...string) int {
 // Increment increments the number stored at key by 1. If the key doesn't exist, it is set to 0 before performing the operation.
 // An error is returned if the key contains a value of the wrong type or contains a string that cannot be represented as integer.
 // The whole function should be a string operation because Redis does not have a dedicated integer type ( where all values in Redis are stored in their strings ).
-func (d *Db) Increment(key string) error {
+func (d *Db) Increment(key string) (int, error) {
     d.mu.Lock()
     defer d.mu.Unlock()
 
-    // Key exist but in
+    // Key exist but in listStorage.
     _, inListStorage := d.listStorage[key]
     value, inStringStorage := d.stringStorage[key]
+
+    var result int
+    var err error
 
     if !inStringStorage && !inListStorage {
         d.stringStorage[key] = "1"
     } else if inListStorage && !inStringStorage {
         // Key exist but in wrong storage -> Error value type.
-        return ErrNotInteger
+        return 0, ErrNotInteger
     } else {
-        intValue, err := strconv.Atoi(value)
+        result, err = strconv.Atoi(value)
         if err != nil {
-            return ErrNotInteger // Value not an Integer string.
+            return 0, ErrNotInteger // Value not an Integer string.
         }
-        intValue++
-        d.stringStorage[key] = strconv.Itoa(intValue)
+        result++
+        d.stringStorage[key] = strconv.Itoa(result)
     }
-    return nil
+    return result, nil
 }
 
 // Decrement decrements the number stored at key by one. If the key doesn't exists, it is set to 0 before performing the operation.
