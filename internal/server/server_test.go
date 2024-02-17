@@ -11,17 +11,21 @@ import (
 
 const TestAddr = "localhost:6380"
 
-func init() {
+func TestRedisServer_Run(t *testing.T) {
     db := inMemoryDatabase.New()
     rs := New(TestAddr, db)
-
-    // Run the server in goroutine to stop tests from blocking test executions.
     go func() {
-        _ = rs.Run()
+        err := rs.Run()
+        if err != nil {
+            panic(err)
+        }
+        defer func() {
+            if err = rs.Close(); err != nil {
+                panic(err)
+            }
+        }()
     }()
-}
 
-func TestRedisServer_Run(t *testing.T) {
     clientConn, err := net.Dial(TCP, TestAddr)
     if err != nil {
         t.Errorf("error cannot connect to server: %#v\n", err)
@@ -37,7 +41,7 @@ func TestRedisServer_Run(t *testing.T) {
         },
         {
             request:  []byte("*3\r\n$4\r\necho\r\n$5\r\nhello\r\n$5\r\nworld\r\n"),
-            response: []byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"),
+            response: []byte("+hello world\r\n"),
         },
     }
 
@@ -56,7 +60,6 @@ func TestRedisServer_Run(t *testing.T) {
                 t.Errorf("error response didn't match, expected %s, got %s.\n", tc.response, resp[:len(tc.response)])
             }
         }
-
     }
 
     err = clientConn.Close()
