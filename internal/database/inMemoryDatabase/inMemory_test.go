@@ -7,6 +7,37 @@ import (
 
 func TestDb_Set(t *testing.T) {
     db := New()
+    // Rare case, when key already exist but in listStorage.
+    kLists := []struct {
+        key  string
+        list *StrNode
+    }{
+        {
+            key: "foo_list",
+            list: &StrNode{
+                value: "1",
+                next: &StrNode{
+                    value: "2",
+                    next:  nil,
+                },
+            },
+        },
+        {
+            key: "bar_list",
+            list: &StrNode{
+                value: "3",
+                next: &StrNode{
+                    value: "4",
+                    next:  nil,
+                },
+            },
+        },
+    }
+
+    for _, kList := range kLists {
+        db.listStorage[kList.key] = kList.list
+    }
+
     testCases := []struct {
         key   string
         value string
@@ -14,7 +45,9 @@ func TestDb_Set(t *testing.T) {
         {"foo", "bar"},
         {"key", "value"},
         {"x", "1"},
-        {"x", "r"}, // Should overwrite.
+        {"x", "r"},        // Should overwrite.
+        {"foo_list", "1"}, // Should overwrite.
+        {"bar_list", "2"}, // Should overwrite.¬
     }
 
     for _, tc := range testCases {
@@ -23,6 +56,7 @@ func TestDb_Set(t *testing.T) {
             t.Errorf("Error setting value for key %s: expected value %s. got %s.\n", tc.key, tc.value, db.stringStorage[tc.key])
         }
     }
+
 }
 
 func TestDb_Get(t *testing.T) {
