@@ -2,6 +2,7 @@ package server
 
 import (
     "MyOwnRedis/internal/database"
+    "MyOwnRedis/internal/database/inMemoryDatabase"
     "MyOwnRedis/internal/redisObject"
     "fmt"
     "net"
@@ -100,26 +101,26 @@ func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
         resp = redisObject.Serialize(redisObject.SimpleStrings, "PONG")
     case "echo":
         resp = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
-    //case "set":
-    //    // Any SET operation will be successful and previous value is discarded.
-    //    // The command should always return '+OK\r\n'.
-    //    r.db.Set(robj.Content[0], robj.Content[1])
-    //    resp = redisObject.Serialize(redisObject.SimpleStrings, "OK")
-    //case "get":
-    //    value, err := r.db.Get(robj.Content[0])
-    //    if err != nil {
-    //        // The error here can only be clients trying to get from the lrange database.
-    //        resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
-    //    } else {
-    //        // Check for nil values.
-    //        if value == inMemoryDatabase.NIL {
-    //            resp = redisObject.Serialize(redisObject.BulkStrings, "-1")
-    //        } else {
-    //            resp = redisObject.Serialize(redisObject.SimpleStrings, value)
-    //        }
-    //
-    //        // Do we have to check whether the value is an integer?
-    //    }
+    case "set":
+        // Any SET operation will be successful and previous value is discarded.
+        // The command should always return '+OK\r\n'.
+        r.db.Set(robj.Content[0], robj.Content[1])
+        resp = redisObject.Serialize(redisObject.SimpleStrings, "OK")
+    case "get":
+        value, err := r.db.Get(robj.Content[0])
+        if err != nil {
+            // The error here can only be clients trying to get from the lrange database.
+            resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
+        } else {
+            // Check for nil values.
+            if value == inMemoryDatabase.NIL {
+                resp = redisObject.Serialize(redisObject.BulkStrings, "-1")
+            } else {
+                resp = redisObject.Serialize(redisObject.SimpleStrings, value)
+            }
+
+            // Do we have to check whether the value is an integer?
+        }
     case "del":
     case "exists":
     case "incr":
