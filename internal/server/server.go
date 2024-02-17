@@ -73,7 +73,7 @@ func (r *RedisServer) Run() error {
 
                 // Handle request.
                 var response []byte
-                response, err = r.HandleRequest(req)
+                response, err = r.handleRequest(req)
                 if err != nil {
                     break
                 }
@@ -93,15 +93,33 @@ func (r *RedisServer) Close() error {
     return r.l.Close()
 }
 
-func (r *RedisServer) Evaluate(robj *redisObject.RObj) ([]byte, error) {
+func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
     var resp []byte
     switch robj.Command {
     case "ping":
         resp = redisObject.Serialize(redisObject.SimpleStrings, "PONG")
     case "echo":
         resp = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
-    case "set":
-    case "get":
+    //case "set":
+    //    // Any SET operation will be successful and previous value is discarded.
+    //    // The command should always return '+OK\r\n'.
+    //    r.db.Set(robj.Content[0], robj.Content[1])
+    //    resp = redisObject.Serialize(redisObject.SimpleStrings, "OK")
+    //case "get":
+    //    value, err := r.db.Get(robj.Content[0])
+    //    if err != nil {
+    //        // The error here can only be clients trying to get from the lrange database.
+    //        resp = redisObject.Serialize(redisObject.SimpleErrors, "ERR WRONGTYPE Operation against a key holding the wrong kind of value")
+    //    } else {
+    //        // Check for nil values.
+    //        if value == inMemoryDatabase.NIL {
+    //            resp = redisObject.Serialize(redisObject.BulkStrings, "-1")
+    //        } else {
+    //            resp = redisObject.Serialize(redisObject.SimpleStrings, value)
+    //        }
+    //
+    //        // Do we have to check whether the value is an integer?
+    //    }
     case "del":
     case "exists":
     case "incr":
@@ -115,14 +133,14 @@ func (r *RedisServer) Evaluate(robj *redisObject.RObj) ([]byte, error) {
     return resp, nil
 }
 
-func (r *RedisServer) HandleRequest(request []byte) ([]byte, error) {
+func (r *RedisServer) handleRequest(request []byte) ([]byte, error) {
     var response []byte
 
     robj, err := redisObject.Deserialize(request)
     if err != nil {
         response = redisObject.Serialize(redisObject.SimpleErrors, err.Error())
     }
-    response, err = r.Evaluate(robj)
+    response, err = r.evaluate(robj)
     if err != nil {
 
     }
