@@ -6,6 +6,7 @@ import (
     "MyOwnRedis/internal/redisObject"
     "fmt"
     "net"
+    "strconv"
 )
 
 const TCP = "tcp"
@@ -50,6 +51,7 @@ func (r *RedisServer) Run() error {
         }
 
         // If receive a connection, spawn the connection dealing process with a goroutine.
+        // Then go on to the next loop.
         go func(conn net.Conn) {
             // Close the connection after we're done dealing with the connection.
             defer func() {
@@ -122,6 +124,9 @@ func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
             // Do we have to check whether the value is an integer?
         }
     case "del":
+        keysDeleted := r.db.Delete(robj.Content...)
+        // Integer response.
+        resp = redisObject.Serialize(redisObject.Integers, strconv.Itoa(keysDeleted))
     case "exists":
     case "incr":
     case "decr":
