@@ -1,9 +1,46 @@
 package redisObject
 
 import (
+    "bytes"
     "errors"
     "testing"
 )
+
+func Test_Serialize(t *testing.T) {
+    testCases := []struct {
+        responseType string
+        data         []string
+        result       []byte
+    }{
+        {
+            responseType: SimpleErrors,
+            data:         []string{"Error message"},
+            result:       []byte("-Error message\r\n"),
+        },
+        {
+            responseType: SimpleStrings,
+            data:         []string{"PONG"},
+            result:       []byte("+PONG\r\n"),
+        },
+        {
+            responseType: SimpleStrings,
+            data:         []string{"Hello", "world"},
+            result:       []byte("+Hello world\r\n"),
+        },
+        {
+            responseType: SimpleStrings,
+            data:         []string{"OK"},
+            result:       []byte("+OK\r\n"),
+        },
+    }
+
+    for _, tc := range testCases {
+        re := Serialize(tc.responseType, tc.data...)
+        if !bytes.Equal(re, tc.result) {
+            t.Errorf("error serializing: expected %s, got %s.\n", tc.result, re)
+        }
+    }
+}
 
 func Test_Deserialize(t *testing.T) {
     t.Run("Test Deserialize Invalid commands", func(t *testing.T) {
