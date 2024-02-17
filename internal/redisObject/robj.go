@@ -274,10 +274,23 @@ func Serialize(responseType string, data ...string) []byte {
     var re []byte
     switch responseType {
     case SimpleStrings:
-        re = []byte(fmt.Sprintf("%s%s\r\n", SimpleStrings, data[0]))
+        re = []byte(SimpleStrings)
+        for i := 0; i < len(data)-1; i++ {
+            // Add spaces between contents if length of data != 1.
+            re = append(re, fmt.Sprintf("%s ", data[i])...)
+        }
+
+        // Append the last element with the delimiter '\r\n'.
+        re = append(re, fmt.Sprintf("%s\r\n", data[len(data)-1])...)
     case SimpleErrors:
         re = []byte(fmt.Sprintf("%s%s\r\n", SimpleErrors, data[0]))
     case Arrays:
+        // Count the elements in the array.
+        re = []byte(fmt.Sprintf("%s%d\r\n", Arrays, len(data)))
+        for _, ele := range data {
+            // Count the length of the ele.
+            re = append(re, fmt.Sprintf("$%d\r\n%s\r\n", len(ele), ele)...)
+        }
     case Integers:
         re = []byte(fmt.Sprintf("%s%s\r\n", Integers, data[0]))
     case BulkStrings:
