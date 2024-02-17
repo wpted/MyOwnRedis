@@ -6,9 +6,10 @@ type MemDb interface {
     Exists(key string) bool
     Delete(keys ...string) int
     Increment(key string) (int, error)
-    Decrement(key string) error
+    Decrement(key string) (int, error)
     LeftPush(key string, values ...string) (int, error)
     RightPush(key string, values ...string) (int, error)
+    LRange(key string, start, stop int) ([]string, error)
     SaveDatabase() error
     LoadDatabase() error
 }
