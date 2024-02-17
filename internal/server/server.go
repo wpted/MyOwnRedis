@@ -100,7 +100,6 @@ func (r *RedisServer) Evaluate(robj *redisObject.RObj) ([]byte, error) {
         resp = redisObject.Serialize(redisObject.SimpleStrings, "PONG")
     case "echo":
         resp = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
-    case "quit":
     case "set":
     case "get":
     case "del":
