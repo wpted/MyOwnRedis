@@ -132,25 +132,29 @@ func (d *Db) Increment(key string) (int, error) {
 // Decrement decrements the number stored at key by one. If the key doesn't exists, it is set to 0 before performing the operation.
 // An error is returned if the key contains a value of the wrong type or contains a string that cannot be represented as integer.
 // The whole function should be a string operation because Redis does not have a dedicated integer type ( where all values in Redis are stored in their strings ).
-func (d *Db) Decrement(key string) error {
+func (d *Db) Decrement(key string) (int, error) {
     d.mu.Lock()
     defer d.mu.Unlock()
     _, inListStorage := d.listStorage[key]
     value, inStringStorage := d.stringStorage[key]
 
+    var result int
+    var err error
+
     if !inStringStorage && !inListStorage {
         d.stringStorage[key] = "-1"
+        result = -1
     } else if inListStorage && !inStringStorage {
-        return ErrNotInteger
+        return 0, ErrNotInteger
     } else {
-        intValue, err := strconv.Atoi(value)
+        result, err = strconv.Atoi(value)
         if err != nil {
-            return ErrNotInteger
+            return 0, ErrNotInteger
         }
-        intValue--
-        d.stringStorage[key] = strconv.Itoa(intValue)
+        result--
+        d.stringStorage[key] = strconv.Itoa(result)
     }
-    return nil
+    return result, nil
 }
 
 // LRange returns the specified elements of the list stored at key.
