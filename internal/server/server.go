@@ -153,6 +153,8 @@ func (r *RedisServer) evaluate(robj *redisObject.RObj) ([]byte, error) {
     case "lpush":
     case "rpush":
     case "lrange":
+    case "command": // This is for starting up, which will never show on the client side.
+        resp = redisObject.Serialize(redisObject.SimpleStrings, "Hello, Edward's Redis.")
     }
     return resp, nil
 }
