@@ -114,6 +114,7 @@ func (d *Db) Increment(key string) (int, error) {
 
     if !inStringStorage && !inListStorage {
         d.stringStorage[key] = "1"
+        result = 1
     } else if inListStorage && !inStringStorage {
         // Key exist but in wrong storage -> Error value type.
         return 0, ErrNotInteger
