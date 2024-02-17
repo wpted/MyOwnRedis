@@ -2,6 +2,7 @@ package inMemoryDatabase
 
 import (
     "errors"
+    "strconv"
     "testing"
 )
 
@@ -315,13 +316,13 @@ func TestDb_Increment(t *testing.T) {
         }
 
         for _, tc := range testCases {
-            err := db.Increment(tc.input)
+            re, err := db.Increment(tc.input)
             if err != nil {
                 t.Errorf("Error incrementing, got error: %#v.\n", err)
             }
-            value, _ := db.Get(tc.input)
-            if value != tc.expectedValue {
-                t.Errorf("Error incrementing result: expected %s, got %s.\n", tc.expectedValue, value)
+
+            if strconv.Itoa(re) != tc.expectedValue {
+                t.Errorf("Error incrementing result: expected %s, got %d.\n", tc.expectedValue, re)
             }
         }
     })
@@ -371,7 +372,7 @@ func TestDb_Increment(t *testing.T) {
 
         incorrectKeys := []string{"foo", "key", "foo_list", "bar_list"}
         for _, incorrectKey := range incorrectKeys {
-            err := db.Increment(incorrectKey)
+            _, err := db.Increment(incorrectKey)
             if !errors.Is(err, ErrNotInteger) {
                 t.Errorf("Error incorrect error: expected %#v, got %#v.\n", ErrNotInteger, err)
             }
