@@ -7,6 +7,7 @@ import (
     "fmt"
     "net"
     "strconv"
+    "time"
 )
 
 const TCP = "tcp"
@@ -116,6 +117,12 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
             r.db.Set(robj.Content[0], robj.Content[1])
             response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
 
+            // Expire robj that has time to live.
+            if robj.TimeToLive != 0 {
+                // Launch a goroutine that waits to expire the object.
+                go r.expireRObj(robj)
+            }
+
         case "get":
             value, err := r.db.Get(robj.Content[0])
             if err != nil {
@@ -209,4 +216,17 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
         }
     }
     return response
+}
+
+// expireRobj expires a Redis object after reaches time to live.
+func (r *RedisServer) expireRObj(robj *redisObject.RObj) {
+    ticker := time.NewTimer(robj.TimeToLive)
+    defer ticker.Stop()
+
+    // Blocking process.
+    select {
+    case <-ticker.C:
+        // Will delete when receive from ticker.C, unblock process.
+        r.db.Delete(robj.Content[0])
+    }
 }
