@@ -123,7 +123,7 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
             } else {
                 // Check for nil values.
-                if value == inMemoryDatabase.NIL {
+                if value == inMemoryDatabase.Nil {
                     response = redisObject.Serialize(redisObject.BulkStrings, "-1")
                     return response
                 }

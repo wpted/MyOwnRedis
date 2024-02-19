@@ -9,8 +9,8 @@ import (
     "sync"
 )
 
-const NIL = "nil"
-const DUMPFILE = "tmp/dump.csv"
+const Nil = "nil"
+const DumpFile = "tmp/dump.csv"
 
 var (
     ErrNotString  = errors.New("error fetched value is not a string")
@@ -84,7 +84,7 @@ func (d *Db) Get(key string) (string, error) {
     if okInStringStorage {
         return value, nil
     } else {
-        return NIL, nil
+        return Nil, nil
     }
 }
 
@@ -315,7 +315,7 @@ func loadDatabase() (*Db, error) {
     }
 
     // Read from dump.csv and store to d.Db
-    file, err := os.OpenFile(DUMPFILE, os.O_CREATE|os.O_RDONLY, 0644)
+    file, err := os.OpenFile(DumpFile, os.O_CREATE|os.O_RDONLY, 0644)
     if err != nil {
         return nil, err
     }

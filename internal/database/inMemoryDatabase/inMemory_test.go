@@ -93,8 +93,8 @@ func TestDb_Get(t *testing.T) {
             t.Errorf("Error getting value, got error %#v.\n", err)
         }
 
-        if value != NIL {
-            t.Errorf("Error getting value: expected %s, got %s.\n", NIL, value)
+        if value != Nil {
+            t.Errorf("Error getting value: expected %s, got %s.\n", Nil, value)
         }
 
     })
