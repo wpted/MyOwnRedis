@@ -30,7 +30,7 @@ var (
 type Db struct {
     stringStorage map[string]string
     listStorage   map[string]*StrNode
-    mu            sync.RWMutex
+    sync.RWMutex
 }
 
 // New creates a new Db.
@@ -48,7 +48,6 @@ func New() *Db {
         return &Db{
             stringStorage: make(map[string]string),
             listStorage:   make(map[string]*StrNode),
-            mu:            sync.RWMutex{},
         }
     }
 
@@ -63,8 +62,8 @@ func New() *Db {
 // Set sets key to hold the string value.
 // If key already holds a value, it is overwritten, regardless of its type.
 func (d *Db) Set(key string, value string) {
-    d.mu.Lock()
-    defer d.mu.Unlock()
+    d.Lock()
+    defer d.Unlock()
     // Check if key is in listStorage.
     if _, ok := d.listStorage[key]; ok {
         // Delete the key-value pair if existed.
@@ -78,8 +77,8 @@ func (d *Db) Set(key string, value string) {
 // An error is returned if the value stored at key is not a string, because Get only handles string values.
 func (d *Db) Get(key string) (string, error) {
     // With RLock, all goroutines can read concurrently without blocking each other.
-    d.mu.RLock()
-    defer d.mu.RUnlock()
+    d.RLock()
+    defer d.RUnlock()
 
     value, okInStringStorage := d.stringStorage[key]
 
@@ -98,8 +97,8 @@ func (d *Db) Get(key string) (string, error) {
 
 // Exists determines whether a key exists.
 func (d *Db) Exists(key string) bool {
-    d.mu.RLock()
-    defer d.mu.RUnlock()
+    d.RLock()
+    defer d.RUnlock()
 
     _, strOk := d.stringStorage[key]
     _, listOk := d.listStorage[key]
@@ -109,8 +108,8 @@ func (d *Db) Exists(key string) bool {
 // Delete removes the specified key and returns numbers of the actual deleted key.
 // The action is ignored if the keys doesn't exist.
 func (d *Db) Delete(keys ...string) int {
-    d.mu.Lock()
-    defer d.mu.Unlock()
+    d.Lock()
+    defer d.Unlock()
 
     var deletedKeys int
     // delete is a no-op if the key doesn't exist in the map.
@@ -132,8 +131,8 @@ func (d *Db) Delete(keys ...string) int {
 // An error is returned if the key contains a value of the wrong type or contains a string that cannot be represented as integer.
 // The whole function should be a string operation because Redis does not have a dedicated integer type ( where all values in Redis are stored in their strings ).
 func (d *Db) Increment(key string) (int, error) {
-    d.mu.Lock()
-    defer d.mu.Unlock()
+    d.Lock()
+    defer d.Unlock()
 
     // Key exist but in listStorage.
     _, inListStorage := d.listStorage[key]
@@ -163,8 +162,8 @@ func (d *Db) Increment(key string) (int, error) {
 // An error is returned if the key contains a value of the wrong type or contains a string that cannot be represented as integer.
 // The whole function should be a string operation because Redis does not have a dedicated integer type ( where all values in Redis are stored in their strings ).
 func (d *Db) Decrement(key string) (int, error) {
-    d.mu.Lock()
-    defer d.mu.Unlock()
+    d.Lock()
+    defer d.Unlock()
     _, inListStorage := d.listStorage[key]
     value, inStringStorage := d.stringStorage[key]
 
@@ -195,8 +194,8 @@ func (d *Db) Decrement(key string) (int, error) {
 // If stop is larger than the actual end of the list, LRange will treat it like the last element of the list.
 // If the key doesn't exist, returns an empty list.
 func (d *Db) LRange(key string, start, stop int) ([]string, error) {
-    d.mu.RLock()
-    defer d.mu.RUnlock()
+    d.RLock()
+    defer d.RUnlock()
 
     if _, ok := d.stringStorage[key]; ok {
         // Values having wrong type.
@@ -217,8 +216,8 @@ func (d *Db) LRange(key string, start, stop int) ([]string, error) {
 // Elements are inserted one after the other to the head of the list, from the leftmost element to the rightmost element.
 // So for instance the command `LPUSH myList a b c` will result into a list containing `c` as first element, `b` as second element and `a` as third element.
 func (d *Db) LeftPush(key string, values ...string) (int, error) {
-    d.mu.Lock()
-    defer d.mu.Unlock()
+    d.Lock()
+    defer d.Unlock()
 
     _, inStringStorage := d.stringStorage[key]
     if inStringStorage {
@@ -246,8 +245,8 @@ func (d *Db) LeftPush(key string, values ...string) (int, error) {
 // Elements are inserted one after the other to the tail of the list, from the leftmost element to the rightmost element.
 // So for instance the command `RPUSH myList a b c` will result into a list containing `a` as first element, `b` as second element and `c` as third element.
 func (d *Db) RightPush(key string, values ...string) (int, error) {
-    d.mu.Lock()
-    defer d.mu.Unlock()
+    d.Lock()
+    defer d.Unlock()
 
     _, inStringStorage := d.stringStorage[key]
     if inStringStorage {
@@ -267,8 +266,8 @@ func (d *Db) RightPush(key string, values ...string) (int, error) {
 // SaveDatabase persists all data to 'tmp/dump.csv'
 func (d *Db) SaveDatabase() error {
     // Lock the database from writing new data.
-    d.mu.RLock()
-    defer d.mu.RUnlock()
+    d.RLock()
+    defer d.RUnlock()
 
     // Open a csv file.
     file, err := os.OpenFile(DumpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
@@ -319,7 +318,6 @@ func loadDatabase() (*Db, error) {
     db := &Db{
         stringStorage: make(map[string]string),
         listStorage:   make(map[string]*StrNode),
-        mu:            sync.RWMutex{},
     }
 
     // Read from dump.csv and store to d.Db
