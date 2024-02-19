@@ -1,12 +1,16 @@
 package inMemoryDatabase
 
 import (
+    "encoding/csv"
     "errors"
+    "io"
+    "os"
     "strconv"
     "sync"
 )
 
 const NIL = "nil"
+const DUMPFILE = "tmp/dump.csv"
 
 var (
     ErrNotString  = errors.New("error fetched value is not a string")
@@ -22,12 +26,30 @@ type Db struct {
 }
 
 // New creates a new Db.
+// If there's existing dump.csv, load the data instead.
 func New() *Db {
-    return &Db{
-        stringStorage: make(map[string]string),
-        listStorage:   make(map[string]*StrNode),
-        mu:            sync.RWMutex{},
+    // Create directory 'tmp' if not exist.
+    if _, err := os.Stat("tmp/"); os.IsNotExist(err) {
+        if err = os.Mkdir("tmp/", os.ModePerm); err != nil {
+            panic(err)
+        }
     }
+
+    _, err := os.Stat("tmp/dump.csv")
+    if os.IsNotExist(err) {
+        return &Db{
+            stringStorage: make(map[string]string),
+            listStorage:   make(map[string]*StrNode),
+            mu:            sync.RWMutex{},
+        }
+    }
+
+    db, err := loadDatabase()
+    if err != nil {
+        panic(err)
+    }
+    return db
+
 }
 
 // Set sets key to hold the string value.
@@ -234,10 +256,100 @@ func (d *Db) RightPush(key string, values ...string) (int, error) {
     return d.listStorage[key].Len(), nil
 }
 
+// SaveDatabase persists all data to 'tmp/dump.csv'
 func (d *Db) SaveDatabase() error {
+    // Lock the database from writing new data.
+    d.mu.RLock()
+    defer d.mu.RUnlock()
+
+    // Open a csv file.
+    file, err := os.OpenFile("tmp/dump.csv", os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        return err
+    }
+
+    defer func() {
+        if err = file.Close(); err != nil {
+            panic(err)
+        }
+    }()
+
+    // Create csv writer.
+    w := csv.NewWriter(file)
+
+    // Clean underlying buffer in w.
+    defer w.Flush()
+
+    record := make([][]string, 0)
+
+    // Write the string section.
+    for key, value := range d.stringStorage {
+        record = append(record, []string{"<String>", key, value})
+    }
+
+    // Write the list section.
+    for key, list := range d.listStorage {
+        curRow := []string{"<List>", key}
+        temp := list
+        for temp != nil {
+            curRow = append(curRow, temp.value)
+            temp = temp.next
+        }
+        record = append(record, curRow)
+    }
+
+    err = w.WriteAll(record)
+    if err != nil {
+        return err
+    }
+
     return nil
 }
 
-func (d *Db) LoadDatabase() error {
-    return nil
+// loadDatabase loads from 'tmp/dump.csv'
+func loadDatabase() (*Db, error) {
+    db := &Db{
+        stringStorage: make(map[string]string),
+        listStorage:   make(map[string]*StrNode),
+        mu:            sync.RWMutex{},
+    }
+
+    // Read from dump.csv and store to d.Db
+    file, err := os.OpenFile(DUMPFILE, os.O_CREATE|os.O_RDONLY, 0644)
+    if err != nil {
+        return nil, err
+    }
+
+    defer func() {
+        err = file.Close()
+        if err != nil {
+            panic(err)
+        }
+    }()
+
+    // Create csv reader.
+    r := csv.NewReader(file)
+
+    // Disable record length test in the CSV reader.
+    r.FieldsPerRecord = -1
+    var record []string
+    for {
+        record, err = r.Read()
+        if err != nil {
+            if errors.Is(err, io.EOF) {
+                break
+            }
+            return nil, err
+        }
+
+        if len(record) != 0 {
+            switch record[0] {
+            case "<String>":
+                db.Set(record[1], record[2])
+            case "<List>":
+                _, _ = db.RightPush(record[1], record[2:]...)
+            }
+        }
+    }
+    return db, nil
 }
