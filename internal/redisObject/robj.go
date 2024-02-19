@@ -5,6 +5,7 @@ import (
     "fmt"
     "strconv"
     "strings"
+    "time"
 )
 
 const (
@@ -45,10 +46,11 @@ var cmdTable = map[string]struct {
     "rpush":   {cmdType: MULTIPLE, expectedArgs: -1},
 }
 
+// RObj struct.
 type RObj struct {
     Type       string
     Command    string
-    TimeToLive int
+    TimeToLive time.Duration
     Content    []string
 }
 
@@ -57,7 +59,7 @@ func New(rType string, content []string, cmd string) *RObj {
     return &RObj{Type: rType, Content: content, Command: cmd}
 }
 
-// Deserialize decodes bytes into RObjs.
+// Deserialize decodes bytes into RObj.
 func Deserialize(req []byte) (*RObj, error) {
     if len(req) < 2 {
         return nil, ErrInvalidCommand
@@ -164,9 +166,8 @@ func Deserialize(req []byte) (*RObj, error) {
                     if err != nil {
                         return nil, err
                     }
-
                     if len(content) == 2 || len(content) == 4 {
-                        // For set commands there's optional tags like EX, PX, EAXT, PXAT...
+                        // For set commands there's optional tags like EX, PX, EXAT, PXAT...
                         if len(content) == 4 {
                             // Check the optional tags
                             optionalCmd := strings.ToLower(content[2])
@@ -178,10 +179,15 @@ func Deserialize(req []byte) (*RObj, error) {
 
                             switch optionalCmd {
                             case "ex":
-                                robj.TimeToLive = timeArg
+                                robj.TimeToLive = time.Duration(timeArg) * time.Second
                             case "px":
-                            case "eaxt":
+                                robj.TimeToLive = time.Duration(timeArg) * time.Millisecond
+                            case "exat":
+                                now := time.Now().Unix()
+                                robj.TimeToLive = time.Duration(int64(timeArg)-now) * time.Second
                             case "pxat":
+                                now := time.Now().Unix()
+                                robj.TimeToLive = time.Duration(int64(timeArg)-now) * time.Millisecond
                             default:
                                 return nil, ErrInvalidCommand
                             }
