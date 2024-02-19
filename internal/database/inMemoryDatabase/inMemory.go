@@ -28,15 +28,15 @@ type Db struct {
 // New creates a new Db.
 // If there's existing dump.csv, load the data instead.
 func New() *Db {
-    // Create directory 'tmp' if not exist.
+    // Create directory 'tmp' and 'tmp/dump.csv' if not exist.
     if _, err := os.Stat("tmp/"); os.IsNotExist(err) {
-        if err = os.Mkdir("tmp/", os.ModePerm); err != nil {
+        if err = os.Mkdir("tmp/", os.ModeDir|os.ModePerm); err != nil {
             panic(err)
         }
-    }
-
-    _, err := os.Stat("tmp/dump.csv")
-    if os.IsNotExist(err) {
+        _, err = os.OpenFile("tmp/dump.csv", os.O_CREATE, 0644)
+        if err != nil {
+            panic(err)
+        }
         return &Db{
             stringStorage: make(map[string]string),
             listStorage:   make(map[string]*StrNode),
@@ -263,7 +263,7 @@ func (d *Db) SaveDatabase() error {
     defer d.mu.RUnlock()
 
     // Open a csv file.
-    file, err := os.OpenFile("tmp/dump.csv", os.O_CREATE|os.O_WRONLY, 0644)
+    file, err := os.OpenFile("tmp/dump.csv", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
     if err != nil {
         return err
     }
