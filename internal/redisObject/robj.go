@@ -38,7 +38,6 @@ var cmdTable = map[string]struct {
     "incr":    {cmdType: FIX, expectedArgs: 1},
     "decr":    {cmdType: FIX, expectedArgs: 1},
     "save":    {cmdType: FIX, expectedArgs: 0},
-    "load":    {cmdType: FIX, expectedArgs: 0},
     "lrange":  {cmdType: FIX, expectedArgs: 3},
     "set":     {cmdType: OPTIONAL, expectedArgs: -1},
     "del":     {cmdType: MULTIPLE, expectedArgs: -1},
