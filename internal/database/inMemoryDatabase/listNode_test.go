@@ -175,8 +175,8 @@ func TestStrNode_LRange(t *testing.T) {
         {start: 0, stop: 0, expectedArr: []string{"1"}},
         {start: 1, stop: 2, expectedArr: []string{"hello", "2"}},
         {start: 3, stop: 3, expectedArr: []string{"world"}},
-        {start: 0, stop: 5, expectedArr: []string{"1", "hello", "2", "world"}}, // Stop index greater than array length.
-        {start: 5, stop: 6, expectedArr: []string{}},                           // Start index greater than array length.
+        {start: 0, stop: 6, expectedArr: []string{"1", "hello", "2", "world"}}, // 'Stop' greater than array length.
+        {start: 5, stop: 6, expectedArr: []string{}},                           // 'Start' greater than array length.
         {start: -3, stop: 2, expectedArr: []string{"hello", "2"}},
         {start: -100, stop: 100, expectedArr: []string{"1", "hello", "2", "world"}},
     }
