@@ -11,5 +11,4 @@ type MemDb interface {
     RightPush(key string, values ...string) (int, error)
     LRange(key string, start, stop int) ([]string, error)
     SaveDatabase() error
-    LoadDatabase() error
 }
