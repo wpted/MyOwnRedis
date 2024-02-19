@@ -220,13 +220,11 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
 
 // expireRobj expires a Redis object after reaches time to live.
 func (r *RedisServer) expireRObj(robj *redisObject.RObj) {
-    ticker := time.NewTimer(robj.TimeToLive)
-    defer ticker.Stop()
-
     // Blocking process.
     select {
-    case <-ticker.C:
-        // Will delete when receive from ticker.C, unblock process.
+    // Choose time.After over time.NewTimer for light-weight purposes.
+    case <-time.After(robj.TimeToLive):
+        // Will delete when receive from time.After(), unblock process.
         r.db.Delete(robj.Content[0])
     }
 }
