@@ -106,13 +106,16 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
         switch robj.Command {
         case "ping":
             response = redisObject.Serialize(redisObject.SimpleStrings, "PONG")
+
         case "echo":
             response = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
+
         case "set":
             // Any SET operation will be successful and previous value is discarded.
             // The command should always return '+OK\r\n'.
             r.db.Set(robj.Content[0], robj.Content[1])
             response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
+
         case "get":
             value, err := r.db.Get(robj.Content[0])
             if err != nil {
@@ -127,10 +130,12 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 response = redisObject.Serialize(redisObject.SimpleStrings, value)
                 // Do we have to check whether the value is an integer?
             }
+
         case "del":
             keysDeleted := r.db.Delete(robj.Content...)
             // Integer response.
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(keysDeleted))
+
         case "exists":
             // Integer response. 1 for found key, 0 otherwise.
             if r.db.Exists(robj.Content[0]) {
@@ -146,6 +151,7 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 return response
             }
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
+
         case "decr":
             value, err := r.db.Decrement(robj.Content[0])
             if err != nil {
@@ -153,8 +159,13 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 return response
             }
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
+
         case "save":
-        case "load":
+            if err := r.db.SaveDatabase(); err != nil {
+                panic(err)
+            }
+            response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
+
         case "lpush":
             valuesPushed, err := r.db.LeftPush(robj.Content[0], robj.Content[1:]...)
             if err != nil {
