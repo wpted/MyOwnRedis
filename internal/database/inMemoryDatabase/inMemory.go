@@ -15,6 +15,11 @@ const (
     DumpFile = "tmp/dump.csv"
 )
 
+const (
+    TypeString = "<String>"
+    TypeList   = "<List>"
+)
+
 var (
     ErrNotString  = errors.New("error fetched value is not a string")
     ErrNotInteger = errors.New("error fetched value is not an integer")
@@ -287,12 +292,12 @@ func (d *Db) SaveDatabase() error {
 
     // Write the string section.
     for key, value := range d.stringStorage {
-        record = append(record, []string{"<String>", key, value})
+        record = append(record, []string{TypeString, key, value})
     }
 
     // Write the list section.
     for key, list := range d.listStorage {
-        curRow := []string{"<List>", key}
+        curRow := []string{TypeList, key}
         temp := list
         for temp != nil {
             curRow = append(curRow, temp.value)
@@ -347,9 +352,9 @@ func loadDatabase() (*Db, error) {
 
         if len(record) != 0 {
             switch record[0] {
-            case "<String>":
+            case TypeString:
                 db.Set(record[1], record[2])
-            case "<List>":
+            case TypeList:
                 _, _ = db.RightPush(record[1], record[2:]...)
             }
         }
