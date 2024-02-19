@@ -10,7 +10,10 @@ import (
 )
 
 const Nil = "nil"
-const DumpFile = "tmp/dump.csv"
+const (
+    Tmp      = "tmp/"
+    DumpFile = "tmp/dump.csv"
+)
 
 var (
     ErrNotString  = errors.New("error fetched value is not a string")
@@ -29,11 +32,11 @@ type Db struct {
 // If there's existing dump.csv, load the data instead.
 func New() *Db {
     // Create directory 'tmp' and 'tmp/dump.csv' if not exist.
-    if _, err := os.Stat("tmp/"); os.IsNotExist(err) {
-        if err = os.Mkdir("tmp/", os.ModeDir|os.ModePerm); err != nil {
+    if _, err := os.Stat(Tmp); os.IsNotExist(err) {
+        if err = os.Mkdir(Tmp, os.ModeDir|os.ModePerm); err != nil {
             panic(err)
         }
-        _, err = os.OpenFile("tmp/dump.csv", os.O_CREATE, 0644)
+        _, err = os.OpenFile(DumpFile, os.O_CREATE, 0644)
         if err != nil {
             panic(err)
         }
@@ -263,7 +266,7 @@ func (d *Db) SaveDatabase() error {
     defer d.mu.RUnlock()
 
     // Open a csv file.
-    file, err := os.OpenFile("tmp/dump.csv", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+    file, err := os.OpenFile(DumpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
     if err != nil {
         return err
     }
