@@ -111,7 +111,7 @@ func (s *StrNode) LRange(start, stop int) []string {
         }
     }
 
-    if stop > listLength {
+    if stop >= listLength {
         stop = listLength - 1
     }
 
