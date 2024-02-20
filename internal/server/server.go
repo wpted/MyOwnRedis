@@ -7,19 +7,24 @@ import (
     "fmt"
     "net"
     "strconv"
+    "sync"
     "time"
 )
 
 const TCP = "tcp"
 
-// 1. Create a RedisServer struct
-// 2. Create methods Run(), Close() and Evaluate().
-
 type RedisServer struct {
     addr string
     // Passing `net.Listener` by value is idiomatic and aligns with the general practice in Go of passing interface by value.
-    l  net.Listener
-    db database.MemDb
+    l            net.Listener
+    db           database.MemDb
+    keysChanged  int
+    done         chan struct{}
+    saveRoutines map[time.Duration]struct {
+        timeCreated time.Time
+        done        chan struct{}
+    }
+    sync.RWMutex
 }
 
 // New creates a new RedisServer.
@@ -27,12 +32,20 @@ func New(addr string, db database.MemDb) *RedisServer {
     return &RedisServer{
         addr: addr,
         db:   db,
+        done: make(chan struct{}),
+        saveRoutines: make(map[time.Duration]struct {
+            timeCreated time.Time
+            done        chan struct{}
+        }),
     }
 }
 
 // Run sets up a Redis server that can handle multiple client connections concurrently and respond to client requests asynchronously.
 // Each connection is handled in a separate goroutine, allowing the server to remain responsive to new connections and handle them efficiently.
 func (r *RedisServer) Run() error {
+    go r.save(900*time.Second, 1)
+    go r.save(300*time.Second, 100)
+
     var err error
     // Create a socket that can accept incoming connections.
     r.l, err = net.Listen(TCP, r.addr)
@@ -94,6 +107,7 @@ func (r *RedisServer) Run() error {
 // Close closes the listener.
 // Any blocked `Accept` operations will be unblocked and return errors.
 func (r *RedisServer) Close() error {
+    r.done <- struct{}{}
     return r.l.Close()
 }
 
@@ -115,6 +129,11 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
             // Any SET operation will be successful and previous value is discarded.
             // The command should always return '+OK\r\n'.
             r.db.Set(robj.Content[0], robj.Content[1])
+
+            r.RLock()
+            r.keysChanged++
+            r.RUnlock()
+
             response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
 
             // Expire robj that has time to live.
@@ -140,6 +159,9 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
 
         case "del":
             keysDeleted := r.db.Delete(robj.Content...)
+            r.RLock()
+            r.keysChanged += keysDeleted
+            r.RUnlock()
             // Integer response.
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(keysDeleted))
 
@@ -157,6 +179,9 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
                 return response
             }
+            r.RLock()
+            r.keysChanged++
+            r.RUnlock()
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
 
         case "decr":
@@ -165,11 +190,18 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
                 return response
             }
+            r.RLock()
+            r.keysChanged++
+            r.RUnlock()
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(value))
 
         case "save":
             if err := r.db.SaveDatabase(); err != nil {
                 panic(err)
+            }
+            if len(robj.Content) != 0 {
+                // Setup save options
+                go r.save(robj.SaveOptions.CheckCycle, robj.SaveOptions.KeysChanged)
             }
             response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
 
@@ -179,6 +211,10 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
                 return response
             }
+            r.RLock()
+            r.keysChanged++
+            r.RUnlock()
+
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(valuesPushed))
 
         case "rpush":
@@ -187,6 +223,9 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
                 response = redisObject.Serialize(redisObject.SimpleErrors, "WRONGTYPE Operation against a key holding the wrong kind of value")
                 return response
             }
+            r.RLock()
+            r.keysChanged++
+            r.RUnlock()
             response = redisObject.Serialize(redisObject.Integers, strconv.Itoa(valuesPushed))
 
         case "lrange":
@@ -218,7 +257,7 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
     return response
 }
 
-// expireRobj expires a Redis object after reaches time to live.
+// expireRObj expires a Redis object after reaches time to live.
 func (r *RedisServer) expireRObj(robj *redisObject.RObj) {
     // Blocking process.
     select {
@@ -226,5 +265,51 @@ func (r *RedisServer) expireRObj(robj *redisObject.RObj) {
     case <-time.After(robj.TimeToLive):
         // Will delete when receive from time.After(), unblock process.
         r.db.Delete(robj.Content[0])
+    }
+}
+
+// save method is responsible for managing periodic saving operations for the Redis server.
+// It monitors the number of active save routines and limits them to five.
+// If there are already five save routines running, it replaces the earliest one with a new one.
+func (r *RedisServer) save(checkCycle time.Duration, checkKeys int) {
+    r.Lock()
+    if len(r.saveRoutines) >= 5 {
+        // Collect keys to delete
+        var earliestKey time.Duration
+        earliestTime := time.Now()
+        for k, t := range r.saveRoutines {
+            if t.timeCreated.Before(earliestTime) {
+                earliestTime = t.timeCreated
+                earliestKey = k
+            }
+        }
+        r.saveRoutines[earliestKey].done <- struct{}{}
+        delete(r.saveRoutines, earliestKey)
+    }
+    now := time.Now()
+    saveChan := make(chan struct{})
+    r.saveRoutines[checkCycle] = struct {
+        timeCreated time.Time
+        done        chan struct{}
+    }{timeCreated: now, done: saveChan}
+    r.Unlock()
+
+    ticker := time.NewTicker(checkCycle)
+    initialKey := r.keysChanged
+
+    for {
+        select {
+        case <-r.done: // Release current goroutine.
+            return
+        case <-saveChan:
+            return
+        case <-ticker.C:
+            r.Lock()
+            if r.keysChanged-initialKey >= checkKeys {
+                _ = r.db.SaveDatabase()
+                initialKey = r.keysChanged
+            }
+            r.Unlock()
+        }
     }
 }
