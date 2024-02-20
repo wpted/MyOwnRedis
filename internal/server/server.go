@@ -201,7 +201,7 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
             }
             if len(robj.Content) != 0 {
                 // Setup save options
-                go r.save(robj.SaveOptions.CheckCycle, robj.SaveOptions.KeysChanged)
+                go r.save(robj.SaveOptions.CheckCycle, robj.SaveOptions.CheckKeys)
             }
             response = redisObject.Serialize(redisObject.SimpleStrings, "OK")
 
