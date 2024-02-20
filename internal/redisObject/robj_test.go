@@ -152,6 +152,14 @@ func Test_Deserialize(t *testing.T) {
                 result: &RObj{Type: Arrays, Command: "lrange", Content: []string{"mykey", "1", "2"},
                 },
             },
+            {
+                input:  []byte("*4\r\n$4\r\nsave\r\n"), // Arrays: SAVE.
+                result: &RObj{Type: Arrays, Command: "save", Content: []string{}},
+            },
+            {
+                input:  []byte("*4\r\n$4\r\nsave\r\n$3\r\n900\r\n$1\r\n1\r\n"), // Arrays: SAVE 900 1
+                result: &RObj{Type: Arrays, Command: "save", Content: []string{"900", "1"}},
+            },
         }
 
         for _, tc := range testCases {
