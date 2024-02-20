@@ -33,7 +33,6 @@ var cmdTable = map[string]struct {
     "command": {cmdType: FIX, expectedArgs: 1}, // expected to follow by docs, but for now it doesn't matter.
     "ping":    {cmdType: FIX, expectedArgs: 0},
     "echo":    {cmdType: MULTIPLE, expectedArgs: -1},
-    "quit":    {cmdType: FIX, expectedArgs: 0},
     "get":     {cmdType: FIX, expectedArgs: 1},
     "exists":  {cmdType: FIX, expectedArgs: 1},
     "incr":    {cmdType: FIX, expectedArgs: 1},
