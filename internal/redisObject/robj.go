@@ -38,9 +38,9 @@ var cmdTable = map[string]struct {
     "exists":  {cmdType: FIX, expectedArgs: 1},
     "incr":    {cmdType: FIX, expectedArgs: 1},
     "decr":    {cmdType: FIX, expectedArgs: 1},
-    "save":    {cmdType: FIX, expectedArgs: 0},
     "lrange":  {cmdType: FIX, expectedArgs: 3},
-    "set":     {cmdType: OPTIONAL, expectedArgs: -1},
+    "save":    {cmdType: OPTIONAL, expectedArgs: -1}, // save or save <seconds> <changes>
+    "set":     {cmdType: OPTIONAL, expectedArgs: -1}, // SET x 1 or SET x 1 ex 10
     "del":     {cmdType: MULTIPLE, expectedArgs: -1},
     "lpush":   {cmdType: MULTIPLE, expectedArgs: -1},
     "rpush":   {cmdType: MULTIPLE, expectedArgs: -1},
@@ -48,10 +48,14 @@ var cmdTable = map[string]struct {
 
 // RObj struct.
 type RObj struct {
-    Type       string
-    Command    string
-    TimeToLive time.Duration
-    Content    []string
+    Type        string
+    Command     string
+    Content     []string
+    TimeToLive  time.Duration
+    SaveOptions struct {
+        CheckKeys  int
+        CheckCycle time.Duration
+    }
 }
 
 // New deserializes the client request and creates a RObj.
@@ -103,7 +107,7 @@ func Deserialize(req []byte) (*RObj, error) {
                 }
                 content = append(content, msg)
             case Arrays:
-                // 1. How many elements do we have in the array
+                // 1. Find how many elements we have in the array.
                 elementNumber, theRestOfTheInput, err := parseLength(req)
                 if err != nil {
                     return nil, err
@@ -150,6 +154,7 @@ func Deserialize(req []byte) (*RObj, error) {
                         if len(content) != currentCmd.expectedArgs {
                             return nil, ErrInvalidCommand
                         }
+                        robj.Content = content
                     }
                 case MULTIPLE:
                     content, err = parseContent(req)
@@ -160,16 +165,19 @@ func Deserialize(req []byte) (*RObj, error) {
                     if len(content) == 0 {
                         return nil, ErrInvalidCommand
                     }
-
+                    robj.Content = content
                 case OPTIONAL:
                     content, err = parseContent(req)
                     if err != nil {
                         return nil, err
                     }
-                    if len(content) == 2 || len(content) == 4 {
-                        // For set commands there's optional tags like EX, PX, EXAT, PXAT...
-                        if len(content) == 4 {
-                            // Check the optional tags
+                    switch cmd {
+                    case "set":
+                        if len(content) == 2 {
+                            robj.Content = content
+                        } else if len(content) == 4 {
+                            robj.Content = content
+                            // For set commands there's optional tags like EX, PX, EXAT, PXAT...
                             optionalCmd := strings.ToLower(content[2])
                             timeArg, err := strconv.Atoi(content[3])
                             if err != nil {
@@ -177,6 +185,7 @@ func Deserialize(req []byte) (*RObj, error) {
                                 return nil, ErrInvalidCommand
                             }
 
+                            // Check the optional tags
                             switch optionalCmd {
                             case "ex":
                                 robj.TimeToLive = time.Duration(timeArg) * time.Second
@@ -191,15 +200,45 @@ func Deserialize(req []byte) (*RObj, error) {
                             default:
                                 return nil, ErrInvalidCommand
                             }
+                        } else {
+                            return nil, ErrInvalidCommand
                         }
-                    } else {
+                    case "save":
+                        if len(content) == 0 {
+                            // Do nothing.
+                            robj.Content = content
+
+                        } else if len(content) == 2 {
+                            robj.Content = content
+
+                            saveCheckCycle, err := strconv.Atoi(content[0])
+                            if err != nil {
+                                return nil, err
+                            }
+
+                            checkKeys, err := strconv.Atoi(content[1])
+                            if err != nil {
+                                return nil, err
+                            }
+
+                            robj.SaveOptions = struct {
+                                CheckKeys  int
+                                CheckCycle time.Duration
+                            }{
+                                CheckKeys:  checkKeys,
+                                CheckCycle: time.Duration(saveCheckCycle) * time.Second, // Redis only enables save options using seconds.
+                            }
+
+                        } else {
+                            return nil, ErrInvalidCommand
+                        }
+                    default:
                         return nil, ErrInvalidCommand
                     }
                 }
             default:
                 return nil, ErrInvalidCommand
             }
-            robj.Content = content
         }
     default:
         return nil, ErrInvalidCommand
