@@ -8,87 +8,278 @@ implemented using Go.
 Redis stands for Remote Dictionary Server. Similar to byte arrays, Redis strings store sequences of bytes, including
 text, serialized objects, counter values and binary arrays.
 
-### RESP
-
-To communicate with the Redis server, Redis client uses a protocol called **REdis Serialization Protocol**.
-In RESP, the first byte of the data determines its type. 
-<br><br>
-New RESP connections should begin the session by calling the HELLO command.
-The HELLO command returns information about the server and the protocol that the client can use for different goals.
-A successful reply to the HELLO command is a map reply. 
-The information in the reply is partly server-dependent, but certain fields are mandatory for all the RESP3 implementations:
-
-- server: "redis" (or other software name).
-- version: the server's version.
-- proto: the highest supported version of the RESP protocol.
-
-For example, if we were to send `PING` to the server from the client side, `PING` has to be encoded into
-
-> `*1\r\n\$4\r\nPING\r\n`
-> - 
-> - '*' Means that we received an array.
-> - 1 stands for the size of the array.
-> - \r\n (CRLF) is the terminator of each part in RESP.
-> - The backslash before $4 is the escape character for the $ sign. 
-> - $4 tells you that the following is a bulk string type of four characters long.
-> - PING is the string itself.
-    
-> - `+PONG` should be the string the PING command returned. The plus sign tells you that it's a simple string type.
-
-
 ## Idea
+
 1. Be a copy cat. Translate the first version of Redis ( written in TCL ) to Go. Understand how redis is designed.
 2. Initiate a tcp server that receives data frames from any client.
 3. Decode the client payload using RESP, return error message if payload is not a valid RESP.
 4. Depending on the command, check which corresponding action to perform.
 5. Send data back to the client.
 
-## Steps
+## Implementation Steps
 
 1. Build functionality to serialise and de-serialise messages. The Redis server should follow the **Redis Serialisation
    Protocol (RESP)**.<br><br>
 2. Create a **Light Memory-Mapped Database(LMDB)** server that listens on port <ins>6379</ins>, which is usually
    implemented as an embedded transactional key-value database. The connection uses TCP.<br><br>
 3. Implement the core functions of Redis.
-   <br><br>
-    - [ ] Concurrent CRUD.
-    - [ ] Connector command line interface ( Interactive REPL )<br><br>
-    - Data types<br><br>
-
-      |          | First Byte | 
-      |:---------|:----------:|
-      | Strings  |     +      |
-      | Errors   |     -      |
-      | Integers |     :      |
-      | Arrays   |     *      |
-      | Nulls    |     _      |
-      | Booleans |     #      |
-      | Maps     |     %      |
-      | Sets     |     ~      |
-      <br><br>
-
-    - Commands
-    - [ ] Check server status ( **PING** and **PONG** )
-    - [ ] Store and retrieve data ( **SET** and **GET** )
-    - [ ] Altering and deleting data ( **SET** and **DEL** )
-    - [ ] Incrementing and decrementing stored number ( **INCR** amd **DECR** )
-    - [ ] Insert all the values and the head ( **LPUSH** ) or tail(**RPUSH**) of a list.
-    - [ ] Check whether a data exists ( **EXISTS** )
-    - [ ] Set key expiration ( **EXPIRE KEY**, **PX**, **EAXT** and **PXAT**)
-    - [ ] Scan **keyspace** to get a list of keys ( **SCAN** )
-    - [ ] Check data type and existence ( **TYPE** )
-    - [ ] Show help about existing commands ( **HELP** )
-    - [ ] Clearing the terminal screen ( **CLEAR** )
-    - [ ] Save the database state to disk. ( **SAVE** )
-      <br><br>
 4. Test with the official Redis Client
 
+### TODO
+
+- [x] Concurrent CRUD.
+- [x] Check server status ( **PING** )
+- [x] Store and retrieve data ( **SET** and **GET** )
+- [x] Altering and deleting data ( **SET** and **DEL** )
+- [x] Incrementing and decrementing stored number ( **INCR** amd **DECR** )
+- [x] Insert all the values and the head ( **LPUSH** ) or tail(**RPUSH**) of a list.
+- [x] Show stored values in a list ( **LRANGE** )
+- [x] Check whether a data exists ( **EXISTS** )
+- [x] Set key expiration ( **EX**, **PX**, **EXAT** and **PXAT**)
+- [ ] Scan **keyspace** to get a list of keys ( **SCAN** )
+- [ ] Show help about existing commands ( **HELP** )
+- [x] Save the database state to disk. ( **SAVE** )
+  <br><br>
+
+## Program
+
+Git pull the repo and run the program
+
+```bash
+    go run cmd/main.go
+```
+
+or compile it first then run the corresponding executable on the different platforms.
+
+```bash
+  # On Linux or MacOS
+  go build -o rredis -v ./cmd/main.go
+  # On Darwin MacOS
+  env GOOS=darwin GOARCH=amd64 go build -o rredis -v ./cmd/main.go
+  ./rredis
+  
+  # On Windows
+  env GOOS=windows GOARCH=amd64 go build -o rredis.exe -v ./cmd/main.go
+  rredis.exe
+```
+
+You can also run the existing binaries pulled directly from the repo.
+
+```bash
+# On Linux
+
+./rredis
+
+# On Windows
+rredis.exe
+```
+
+After starting the program you'll see:
+```text
+RRedis listening on port 6379...
+```
+
+After starting the rredis server, connect it with a client that send valid RESP request.
+From the Redis client, request **ping** should respond with a **PONG**.
+```redis
+127.0.0.1:6379 > ping
+PONG
+```
+
+Try echo a cliché 'hello world'
+```redis
+127.0.0.1:6379 > echo hello world
+hello world
+```
+
+## Commands
+This section is highly inspired by [The Redis Command Page](https://redis.io/commands/).
+
+- **PING**
+    - Returns PONG. 
+    This command is useful for testing whether a connection is healthy.
+```redis
+    127.0.0.1:6379 > PING
+    PONG
+```
+- **ECHO**
+    - Returns message.
+    
+```redis
+    // Example
+    127.0.0.1:6379 > echo hello world
+    hello world
+```
+- **SET**
+  - Set key to hold the string value. If key already holds a value, it is overwritten, regardless of its type. Any previous time to live associated with the key is discarded on successful SET operation.
+```text
+    // Syntax
+  
+    SET key value [EX seconds | PX milliseconds | EXAT unix-time-seconds | PXAT unix-time-milliseconds]
+```
+
+```redis
+    127.0.0.1:6379 > SET x 1
+    OK
+    127.0.0.1:6379 > GET x
+    1
+  
+    // SET x with TTL
+    127.0.0.1:6379 > SET x 1 EX 60
+    OK
+```
+- **GET** 
+  - Get the value of key. If the key does not exist the special value nil is returned. An error is returned if the value stored at key is not a string, because GET only handles string values.
+```text
+    // Syntax
+    GET key
+```
+
+```redis
+    127.0.0.1:6379 > SET x 1
+    OK
+    127.0.0.1:6379 > GET x
+    1
+```
+- **INCR**
+  - Increments the number stored at key by one. If the key does not exist, it is set to 0 before performing the operation. An error is returned if the key contains a value of the wrong type or contains a string that can not be represented as integer. This command is a string operation.
+```text
+    // Syntax
+    INCR key
+```
+
+```redis
+    127.0.0.1:6379 > SET x 1
+    OK
+    127.0.0.1:6379 > INCR x
+    2
+```
+- **DECR**
+    - Decrements the number stored at key by one. If the key does not exist, it is set to 0 before performing the operation. An error is returned if the key contains a value of the wrong type or contains a string that can not be represented as integer. This command is a string operation.
+```text
+    // Syntax
+    INCR key
+```
+
+```redis
+    127.0.0.1:6379 > SET x 1
+    OK
+    127.0.0.1:6379 > INCR x
+    2
+```
+- **EXISTS**
+  - Returns if key exists. We return the number of keys that exist from those specified as arguments. 
+```text
+    // Syntax
+    INCR key
+```
+
+```redis
+    127.0.0.1:6379 > SET x 1
+    OK
+    127.0.0.1:6379 > EXISTS x
+    (integer) 1
+    127.0.0.1:6379 > EXISTS keyThatDoesntExist
+    (integer) 0
+```
+- **DEL**
+  - Removes the specified keys and return the number of keys that were removed. A key is ignored if it does not exist.
+```text
+    // Syntax
+    DEL key [key ...]
+```
+
+```redis
+    127.0.0.1:6379 > SET key1 "Hello"
+    OK
+    127.0.0.1:6379 > SET key2 "World"
+    OK
+    127.0.0.1:6379 > del key1 key2
+    (integer) 2
+```
+- **LPUSH**
+  - Insert all the specified values at the head of the list stored at key and return the length of the list after the push operation. If key does not exist, it is created as empty list before performing the push operations. When key holds a value that is not a list, an error is returned.
+```text
+    // Syntax
+    LPUSH key element [element ...]
+```
+
+```redis
+    127.0.0.1:6379 > LPUSH key1 "Hello"
+    (integer) 1
+    127.0.0.1:6379 > LPUSH key1 "World"
+    (integer) 2
+    127.0.0.1:6379 > LRANGE key1 0 1
+    (1) "Hello"
+    (2) "World"
+```
+- **RPUSH**
+  - Insert all the specified values at the tail of the list stored at key and return the length of the list after the push operation. If key does not exist, it is created as empty list before performing the push operations. When key holds a value that is not a list, an error is returned.
+    
+```text
+    // Syntax
+    RPUSH key element [element ...]
+```
+
+```redis
+    127.0.0.1:6379 > RPUSH key1 "Hello"
+    (integer) 1
+    127.0.0.1:6379 > RPUSH key1 "World"
+    (integer) 2
+    127.0.0.1:6379 > LRANGE key1 0 1
+    (1) "World"
+    (2) "Hello"
+```
+
+- **LRANGE** 
+  - Returns the specified elements of the list stored at key. The offsets start and stop are zero-based indexes, with 0 being the first element of the list (the head of the list), 1 being the next element and so on. These offsets can also be negative numbers indicating offsets starting at the end of the list. For example, -1 is the last element of the list, -2 the penultimate, and so on. Out of range indexes will not produce an error. If start is larger than the end of the list, an empty list is returned. If stop is larger than the actual end of the list, Redis will treat it like the last element of the list.
+
+```text
+    // Syntax
+    LRANGE key start stop
+```
+
+```redis
+    127.0.0.1:6379 > RPUSH key1 "Hello"
+    (integer) 1
+    127.0.0.1:6379 > RPUSH key1 "World"
+    (integer) 2
+    127.0.0.1:6379 > LRANGE key1 0 1
+    (1) "World"
+    (2) "Hello"
+```
+- **SAVE**
+  - Save the DB in background and OK code is immediately returned. Save performs a snapshot and store it inside a csv file within the same folder of the program. The cycleTime and keysChanged should be positive numbers.
+
+```text
+    // Syntax
+    SAVE [cycleTime(seconds) keysChanged]
+```
+
+```redis
+    127.0.0.1:6379 > RPUSH key1 "Hello"
+    (integer) 1
+    127.0.0.1:6379 > RPUSH key1 "World"
+    (integer) 2
+    127.0.0.1:6379 > LRANGE key1 0 1
+    (1) "World"
+    (2) "Hello"
+```
+
+
+### Data Persistence
+Unlike **Redis** persist data with AOF and RDB files, the current version of my Redis
+## Supported data types
+
+|             | First Byte | 
+|:------------|:----------:|
+| Strings     |     +      |
+| Errors      |     -      |
+| Integers    |     :      |
+| Arrays      |     *      |
+| BulkStrings |     $      |
+
 ## References
-
-### Tools:
-
-### Video:
-
 ### Reads:
 
 - [LMDB -- First version of Redis written in Tcl](https://gist.github.com/antirez/6ca04dd191bdb82aad9fb241013e88a8)
