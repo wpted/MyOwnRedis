@@ -36,8 +36,7 @@ text, serialized objects, counter values and binary arrays.
 - [x] Show stored values in a list ( **LRANGE** )
 - [x] Check whether a data exists ( **EXISTS** )
 - [x] Set key expiration ( **EX**, **PX**, **EXAT** and **PXAT**)
-- [ ] Scan **keyspace** to get a list of keys ( **SCAN** )
-- [ ] Show help about existing commands ( **HELP** )
+- [x] Scan **keyspace** to get a list of keys ( **SCAN** )
 - [x] Save the database state to disk. ( **SAVE** )
   <br><br>
 
@@ -248,6 +247,24 @@ This section is highly inspired by [The Redis Command Page](https://redis.io/com
     (1) "World"
     (2) "Hello"
 ```
+- **SCAN**
+  - Save the DB for all existing keys. This command works different from the original Redis. 
+
+```text
+    // Syntax
+    SCAN
+```
+
+```redis
+    127.0.0.1:6379 > RPUSH key1 "Hello"
+    (integer) 1
+    127.0.0.1:6379 > SET x 1
+    OK
+    127.0.0.1:6379 > SCAN
+    (1) "key1"
+    (2) "x"
+```
+
 - **SAVE**
   - Save the DB in background and OK code is immediately returned. Save performs a snapshot and store it inside a csv file within the same folder of the program. The cycleTime and keysChanged should be positive numbers.
 
