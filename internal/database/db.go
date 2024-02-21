@@ -3,6 +3,7 @@ package database
 type MemDb interface {
     Set(key string, value string)
     Get(key string) (string, error)
+    GetAllKeys() []string
     Exists(key string) bool
     Delete(keys ...string) int
     Increment(key string) (int, error)
