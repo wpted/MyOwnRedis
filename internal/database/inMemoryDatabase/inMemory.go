@@ -95,6 +95,24 @@ func (d *Db) Get(key string) (string, error) {
     }
 }
 
+// GetAllKeys returns all the keys within the database.
+func (d *Db) GetAllKeys() []string {
+    allKeys := make([]string, 0)
+
+    d.RLock()
+    defer d.RUnlock()
+
+    for k := range d.stringStorage {
+        allKeys = append(allKeys, k)
+    }
+
+    for k := range d.listStorage {
+        allKeys = append(allKeys, k)
+    }
+
+    return allKeys
+}
+
 // Exists determines whether a key exists.
 func (d *Db) Exists(key string) bool {
     d.RLock()
