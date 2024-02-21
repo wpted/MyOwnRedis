@@ -32,7 +32,7 @@ var cmdTable = map[string]struct {
     "null":    {},
     "command": {cmdType: FIX, expectedArgs: 1}, // expected to follow by docs, but for now it doesn't matter.
     "ping":    {cmdType: FIX, expectedArgs: 0},
-    "echo":    {cmdType: MULTIPLE, expectedArgs: -1},
+    "scan":    {cmdType: FIX, expectedArgs: 0},
     "get":     {cmdType: FIX, expectedArgs: 1},
     "exists":  {cmdType: FIX, expectedArgs: 1},
     "incr":    {cmdType: FIX, expectedArgs: 1},
@@ -40,6 +40,7 @@ var cmdTable = map[string]struct {
     "lrange":  {cmdType: FIX, expectedArgs: 3},
     "save":    {cmdType: OPTIONAL, expectedArgs: -1}, // save or save <seconds> <changes>
     "set":     {cmdType: OPTIONAL, expectedArgs: -1}, // SET x 1 or SET x 1 ex 10
+    "echo":    {cmdType: MULTIPLE, expectedArgs: -1},
     "del":     {cmdType: MULTIPLE, expectedArgs: -1},
     "lpush":   {cmdType: MULTIPLE, expectedArgs: -1},
     "rpush":   {cmdType: MULTIPLE, expectedArgs: -1},
