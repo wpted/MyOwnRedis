@@ -4,7 +4,9 @@ import (
     "MyOwnRedis/internal/database"
     "MyOwnRedis/internal/database/inMemoryDatabase"
     "MyOwnRedis/internal/redisObject"
+    "context"
     "fmt"
+    "log"
     "net"
     "strconv"
     "sync"
@@ -53,6 +55,7 @@ func (r *RedisServer) Run() error {
         return err
     }
 
+    log.Println("RRedis listening on port 6379...")
     // Forever loop ran here is necessary to continuously accept incoming connections.
     for {
         var conn net.Conn
@@ -106,7 +109,10 @@ func (r *RedisServer) Run() error {
 
 // Close closes the listener.
 // Any blocked `Accept` operations will be unblocked and return errors.
-func (r *RedisServer) Close() error {
+func (r *RedisServer) Close(ctx context.Context) error {
+    fmt.Println("")
+    log.Println("Shutting down RRedis...")
+    <-ctx.Done()
     r.done <- struct{}{}
     return r.l.Close()
 }
