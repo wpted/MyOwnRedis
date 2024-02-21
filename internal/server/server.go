@@ -125,6 +125,10 @@ func (r *RedisServer) handleRequest(request []byte) []byte {
         case "echo":
             response = redisObject.Serialize(redisObject.SimpleStrings, robj.Content...)
 
+        case "scan":
+            allKeys := r.db.GetAllKeys()
+            response = redisObject.Serialize(redisObject.Arrays, allKeys...)
+
         case "set":
             // Any SET operation will be successful and previous value is discarded.
             // The command should always return '+OK\r\n'.
